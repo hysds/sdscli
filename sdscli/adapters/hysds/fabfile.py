@@ -561,7 +561,7 @@ def install_es_template():
 
 def clean_hysds_ios():
     with prefix('source sciflo/bin/activate'):
-        run('sciflo/ops/grq2/scripts/clean_hysds_ios_indexes.sh http://localhost:9200')
+        run('sciflo/ops/grq2/scripts/clean_hysds_ios_indexes.sh https://localhost:9200')
 
 
 def create_grq_user_rules_index():
@@ -623,7 +623,7 @@ def mozart_redis_flush():
 
 def rabbitmq_queues_flush():
     ctx = get_context()
-    url = 'http://%s:15672/api/queues' % ctx['MOZART_RABBIT_PVT_IP']
+    url = 'https://%s:15672/api/queues' % ctx['MOZART_RABBIT_PVT_IP']
     r = requests.get('%s?columns=name' % url, auth=(ctx['MOZART_RABBIT_USER'],
                                                     ctx['MOZART_RABBIT_PASSWORD']))
     r.raise_for_status()
