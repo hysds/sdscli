@@ -6,7 +6,6 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 
-
 from sdscli.prompt_utils import highlight, blink
 from sdscli.conf_utils import get_user_config_path, get_user_files_path
 from sdscli.log_utils import logger
@@ -15,13 +14,25 @@ from fabric.contrib.files import upload_template, exists, append
 from fabric.api import run, cd, put, sudo, prefix, env, settings, hide
 from copy import deepcopy
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.ssl_ import create_urllib3_context
+import urllib3
 import json
 import yaml
 import re
 import os
 from builtins import open
 from future import standard_library
+
 standard_library.install_aliases()
+
+
+# class for custom cipher for rabbitmq
+class CustomCipherAdapter(HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        ssl_context = create_urllib3_context(ciphers="DHE-RSA-AES128-GCM-SHA256")
+        kwargs['ssl_context'] = ssl_context
+        return super(CustomCipherAdapter, self).init_poolmanager(*args, **kwargs)
 
 
 # ssh_opts and extra_opts for rsync and rsync_project
@@ -375,8 +386,8 @@ def reboot():
 
 
 def mkdir(d, o, g):
-    #sudo('mkdir -p %s' % d)
-    #sudo('chown -R %s:%s %s' % (o, g, d))
+    # sudo('mkdir -p %s' % d)
+    # sudo('chown -R %s:%s %s' % (o, g, d))
     run("mkdir -p %s" % d)
 
 
@@ -461,7 +472,8 @@ def ensure_venv(hysds_dir, update_bash_profile=True, system_site_packages=True, 
         append('.bash_profile',
                "source $HOME/{}/bin/activate".format(hysds_dir), escape=True)
         append('.bash_profile',
-               "export FACTER_ipaddress=$(/usr/sbin/ifconfig $(/usr/sbin/route | awk '/default/{print $NF}') | grep 'inet ' | sed 's/addr://' | awk '{print $2}')", escape=True)
+               "export FACTER_ipaddress=$(/usr/sbin/ifconfig $(/usr/sbin/route | awk '/default/{print $NF}') | grep 'inet ' | sed 's/addr://' | awk '{print $2}')",
+               escape=True)
 
 
 def install_pkg_es_templates():
@@ -623,9 +635,16 @@ def mozart_redis_flush():
 
 def rabbitmq_queues_flush():
     ctx = get_context()
-    url = 'https://%s:15672/api/queues' % ctx['MOZART_RABBIT_PVT_IP']
-    r = requests.get('%s?columns=name' % url, auth=(ctx['MOZART_RABBIT_USER'],
-                                                    ctx['MOZART_RABBIT_PASSWORD']))
+
+    # Create a session and mount the adapter
+    session = requests.Session()
+    session.mount("https://", CustomCipherAdapter())
+
+    url = 'https://%s:15672/api/queues' % ctx['MOZART_RABBIT_FQDN']
+
+    r = session.get('%s?columns=name' % url,
+                     auth=(ctx['MOZART_RABBIT_USER'], ctx['MOZART_RABBIT_PASSWORD']),
+                     verify='/etc/pki/tls/certs/ca-bundle.crt')
     r.raise_for_status()
     res = r.json()
     for i in res:
@@ -637,12 +656,12 @@ def rabbitmq_queues_flush():
 
 def mozart_es_flush():
     ctx = get_context()
-    #run('curl -XDELETE http://{MOZART_ES_PVT_IP}:9200/_index_template/*_status'.format(**ctx))
+    # run('curl -XDELETE http://{MOZART_ES_PVT_IP}:9200/_index_template/*_status'.format(**ctx))
     run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py job_status-current'.format(**ctx))
     run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py task_status-current'.format(**ctx))
     run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py event_status-current'.format(**ctx))
     run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py worker_status-current'.format(**ctx))
-    #run('~/mozart/ops/hysds/scripts/clean_job_spec_container_indexes.sh http://{MOZART_ES_PVT_IP}:9200'.format(**ctx))
+    # run('~/mozart/ops/hysds/scripts/clean_job_spec_container_indexes.sh http://{MOZART_ES_PVT_IP}:9200'.format(**ctx))
 
 
 def npm_install_package_json(dest):
@@ -763,6 +782,7 @@ def python_setup_develop(node_type, dest):
     with prefix('source ~/%s/bin/activate' % node_type):
         with cd(dest):
             run('python setup.py develop')
+
 
 ##########################
 # ci functions
@@ -917,9 +937,9 @@ def send_shipper_conf(node_type, log_dir, cluster_jobs, redis_ip_job_status,
 
 def send_logstash_jvm_options(node_type):
     ctx = get_context(node_type)
-    ram_size_gb = int(get_ram_size_bytes())//1024**3
+    ram_size_gb = int(get_ram_size_bytes()) // 1024 ** 3
     echo("instance RAM size: {}GB".format(ram_size_gb))
-    ram_size_gb_half = int(ram_size_gb//2)
+    ram_size_gb_half = int(ram_size_gb // 2)
     ctx['LOGSTASH_HEAP_SIZE'] = 8 if ram_size_gb_half >= 8 else ram_size_gb_half
     echo("configuring logstash heap size: {}GB".format(ctx['LOGSTASH_HEAP_SIZE']))
     upload_template('jvm.options', '~/logstash/config/jvm.options',
@@ -1070,11 +1090,13 @@ def ensure_ssl(node_type):
                         template_dir=get_user_files_path())
         with cd('ssl'):
             run('openssl genrsa -des3 -passout pass:hysds -out server.key 1024', pty=False)
-            run('OPENSSL_CONF=server.cnf openssl req -passin pass:hysds -new -key server.key -out server.csr', pty=False)
+            run('OPENSSL_CONF=server.cnf openssl req -passin pass:hysds -new -key server.key -out server.csr',
+                pty=False)
             run('cp server.key server.key.org')
             run('openssl rsa -passin pass:hysds -in server.key.org -out server.key', pty=False)
             run('chmod 600 server.key*')
-            run('openssl x509 -passin pass:hysds -req -days 99999 -in server.csr -signkey server.key -out server.pem', pty=False)
+            run('openssl x509 -passin pass:hysds -req -days 99999 -in server.csr -signkey server.key -out server.pem',
+                pty=False)
 
 
 ##########################
