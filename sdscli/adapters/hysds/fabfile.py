@@ -617,20 +617,20 @@ def redis_flush():
     role, hysds_dir, hostname = resolve_role()
     ctx = get_context()
     if role == 'mozart' and ctx['MOZART_REDIS_PASSWORD'] != '':
-        cmd = 'redis-cli -a {MOZART_REDIS_PASSWORD} flushall'.format(**ctx)
+        cmd = 'redis-cli -a {MOZART_REDIS_PASSWORD} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx)
     elif role == 'metrics' and ctx['METRICS_REDIS_PASSWORD'] != '':
-        cmd = 'redis-cli -a {METRICS_REDIS_PASSWORD} flushall'.format(**ctx)
+        cmd = 'redis-cli -a {METRICS_REDIS_PASSWORD} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx)
     else:
-        cmd = 'redis-cli flushall'.format(**ctx)
+        cmd = 'redis-cli --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx)
     run(cmd)
 
 
 def mozart_redis_flush():
     ctx = get_context()
     if ctx['MOZART_REDIS_PASSWORD'] != '':
-        run('redis-cli -a {MOZART_REDIS_PASSWORD} -h {MOZART_REDIS_PVT_IP} flushall'.format(**ctx))
+        run('redis-cli -a {MOZART_REDIS_PASSWORD} -h {MOZART_REDIS_PVT_IP} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx))
     else:
-        run('redis-cli -h {MOZART_REDIS_PVT_IP} flushall'.format(**ctx))
+        run('redis-cli -h {MOZART_REDIS_PVT_IP} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx))
 
 
 def rabbitmq_queues_flush():
