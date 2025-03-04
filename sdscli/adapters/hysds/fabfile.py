@@ -619,7 +619,7 @@ def redis_flush():
     if role == 'mozart' and ctx['MOZART_REDIS_PASSWORD'] != '':
         cmd = 'redis-cli -a {MOZART_REDIS_PASSWORD} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx)
     elif role == 'metrics' and ctx['METRICS_REDIS_PASSWORD'] != '':
-        cmd = 'redis-cli -a {METRICS_REDIS_PASSWORD} flushall'.format(**ctx)
+        cmd = 'redis-cli -a {METRICS_REDIS_PASSWORD} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx)
     else:
         cmd = 'redis-cli flushall'.format(**ctx)
     run(cmd)
