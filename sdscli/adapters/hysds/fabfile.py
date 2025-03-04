@@ -37,7 +37,7 @@ class CustomCipherAdapter(HTTPAdapter):
 
 # ssh_opts and extra_opts for rsync and rsync_project
 ssh_opts = "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
-extra_opts = "-k"
+extra_opts = "-k -q"
 
 # repo regex
 repo_re = re.compile(r'.+//.*?/(.*?)/(.*?)(?:\.git)?$')
