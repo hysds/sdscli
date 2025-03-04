@@ -393,17 +393,17 @@ def mkdir(d, o, g):
 
 def untar(tarfile, chdir):
     with cd(chdir):
-        run('tar xvfj %s' % tarfile)
+        run('tar xfj %s' % tarfile)
 
 
 def untar_gz(cwd, tar_file):
     with cd(cwd):
-        run('tar xvfz %s' % tar_file)
+        run('tar xfz %s' % tar_file)
 
 
 def untar_bz(cwd, tar_file):
     with cd(cwd):
-        run('tar xvfj %s' % tar_file)
+        run('tar xfj %s' % tar_file)
 
 
 def mv(src, dest):
@@ -1105,11 +1105,11 @@ def ensure_ssl(node_type):
 def ship_code(cwd, tar_file, encrypt=False):
     ctx = get_context()
     with cd(cwd):
-        run('tar --exclude-vcs -cvjf %s *' % tar_file)
+        run('tar --exclude-vcs -cjf %s *' % tar_file)
     if encrypt is False:
-        run('aws s3 cp %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
+        run('aws s3 cp --quiet %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
     else:
-        run('aws s3 cp --sse %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
+        run('aws s3 cp --quiet --sse %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
 
 
 ##########################
@@ -1177,13 +1177,13 @@ def ship_style(bucket=None, encrypt=False):
     upload_template('s3-bucket-listing.html.tmpl', index_file, use_jinja=True,
                     context=ctx, template_dir=get_user_files_path())
     if encrypt is False:
-        run('aws s3 cp %s s3://%s/index.html' % (index_file, bucket))
-        run('aws s3 cp %s s3://%s/' % (list_js, bucket))
-        run('aws s3 sync %s s3://%s/index-style' % (index_style, bucket))
+        run('aws s3 cp --quiet %s s3://%s/index.html' % (index_file, bucket))
+        run('aws s3 cp --quiet %s s3://%s/' % (list_js, bucket))
+        run('aws s3 sync --quiet %s s3://%s/index-style' % (index_style, bucket))
     else:
-        run('aws s3 cp --sse %s s3://%s/index.html' % (index_file, bucket))
-        run('aws s3 cp --sse %s s3://%s/' % (list_js, bucket))
-        run('aws s3 sync --sse %s s3://%s/index-style' % (index_style, bucket))
+        run('aws s3 cp --quiet --sse %s s3://%s/index.html' % (index_file, bucket))
+        run('aws s3 cp --quiet --sse %s s3://%s/' % (list_js, bucket))
+        run('aws s3 sync --quiet --sse %s s3://%s/index-style' % (index_style, bucket))
 
 
 ##########################
