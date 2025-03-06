@@ -648,8 +648,9 @@ def rabbitmq_queues_flush():
     r.raise_for_status()
     res = r.json()
     for i in res:
-        r = requests.delete('%s/%%2f/%s' % (url, i['name']),
-                            auth=(ctx['MOZART_RABBIT_USER'], ctx['MOZART_RABBIT_PASSWORD']))
+        r = session.delete('%s/%%2f/%s' % (url, i['name']),
+                            auth=(ctx['MOZART_RABBIT_USER'], ctx['MOZART_RABBIT_PASSWORD']),
+                            verify='/etc/pki/tls/certs/ca-bundle.crt')
         r.raise_for_status()
         logger.debug("Deleted queue %s." % i['name'])
 
