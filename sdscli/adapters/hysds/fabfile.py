@@ -18,6 +18,7 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.ssl_ import create_urllib3_context
 import urllib3
 import json
+import logging
 import yaml
 import re
 import os
@@ -38,7 +39,7 @@ class CustomCipherAdapter(HTTPAdapter):
 # ssh_opts and extra_opts for rsync and rsync_project
 ssh_opts = "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 extra_opts = "-k -q"
-if logger.getEffectiveLevel() <= logger.DEBUG:
+if logger.getEffectiveLevel() <= logging.DEBUG:
     extra_opts = "-k"
 
 # repo regex
@@ -395,7 +396,7 @@ def mkdir(d, o, g):
 
 def untar(tarfile, chdir):
     with cd(chdir):
-        if logger.getEffectiveLevel() <= logger.DEBUG:
+        if logger.getEffectiveLevel() <= logging.DEBUG:
             run('tar xvfj %s' % tarfile)
         else:
             run('tar xfj %s' % tarfile)
@@ -403,7 +404,7 @@ def untar(tarfile, chdir):
 
 def untar_gz(cwd, tar_file):
     with cd(cwd):
-        if logger.getEffectiveLevel() <= logger.DEBUG:
+        if logger.getEffectiveLevel() <= logging.DEBUG:
             run('tar xvfz %s' % tar_file)
         else:
             run('tar xfz %s' % tar_file)
@@ -411,7 +412,7 @@ def untar_gz(cwd, tar_file):
 
 def untar_bz(cwd, tar_file):
     with cd(cwd):
-        if logger.getEffectiveLevel() <= logger.DEBUG:
+        if logger.getEffectiveLevel() <= logging.DEBUG:
             run('tar xvfj %s' % tar_file)
         else:
             run('tar xfj %s' % tar_file)
@@ -1117,17 +1118,17 @@ def ensure_ssl(node_type):
 def ship_code(cwd, tar_file, encrypt=False):
     ctx = get_context()
     with cd(cwd):
-        if logger.getEffectiveLevel() <= logger.DEBUG:
+        if logger.getEffectiveLevel() <= logging.DEBUG:
             run('tar --exclude-vcs -cvjf %s *' % tar_file)
         else:
             run('tar --exclude-vcs -cjf %s *' % tar_file)
     if encrypt is False:
-        if logger.getEffectiveLevel() <= logger.DEBUG:
+        if logger.getEffectiveLevel() <= logging.DEBUG:
             run('aws s3 cp --quiet %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
         else:
             run('aws s3 cp %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
     else:
-        if logger.getEffectiveLevel() <= logger.DEBUG:
+        if logger.getEffectiveLevel() <= logging.DEBUG:
             run('aws s3 cp --quiet --sse %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
         else:
             run('aws s3 cp --sse %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
