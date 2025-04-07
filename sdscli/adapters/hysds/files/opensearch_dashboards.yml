@@ -18,7 +18,7 @@ server.basePath: "/metrics"
 #server.name: "your-hostname"
 
 # The URL of the opensearch instance to use for all your queries.
-opensearch.url: "http://localhost:9200"
+opensearch.url: "https://localhost:9200"
 
 # When this setting's value is true Kibana uses the hostname specified in the server.host
 # setting. When the value of this setting is false, Kibana uses the hostname of the host
