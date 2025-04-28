@@ -449,9 +449,7 @@ def ensure_venv(hysds_dir, update_bash_profile=True, system_site_packages=True, 
         with prefix('source %s/bin/activate' % hysds_dir):
             run('pip install -U pip')
             # HC-568: Need to pin setuptools for now
-            #run('pip install -U "setuptools<80.0.0"')
-            run('pip install -U setuptools')
-            run('pip install -U future')
+            run('pip install -U "setuptools<80.0.0"')
             if install_supervisor:
                 run('pip install supervisor')
     mkdir('%s/etc' % hysds_dir,
