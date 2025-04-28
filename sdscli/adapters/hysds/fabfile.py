@@ -471,9 +471,10 @@ def ensure_venv(hysds_dir, update_bash_profile=True, system_site_packages=True, 
         run(venv_cmd)
         with prefix('source %s/bin/activate' % hysds_dir):
             run('pip install -U pip')
-            run('pip install -U setuptools')
+            # HC-568: Need to pin setuptools for now
+            run('pip install -U "setuptools<80.0.0"')
             if install_supervisor:
-                run('pip install --ignore-installed supervisor')
+                run('pip install supervisor')
     mkdir('%s/etc' % hysds_dir,
           context['OPS_USER'], context['OPS_USER'])
     mkdir('%s/log' % hysds_dir,
