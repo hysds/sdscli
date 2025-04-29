@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 
+
 from sdscli.prompt_utils import highlight, blink
 from sdscli.conf_utils import get_user_config_path, get_user_files_path
 from sdscli.log_utils import logger
@@ -14,33 +15,18 @@ from fabric.contrib.files import upload_template, exists, append
 from fabric.api import run, cd, put, sudo, prefix, env, settings, hide
 from copy import deepcopy
 import requests
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.ssl_ import create_urllib3_context
-import urllib3
 import json
-import logging
 import yaml
 import re
 import os
 from builtins import open
 from future import standard_library
-
 standard_library.install_aliases()
-
-
-# class for custom cipher for rabbitmq
-class CustomCipherAdapter(HTTPAdapter):
-    def init_poolmanager(self, *args, **kwargs):
-        ssl_context = create_urllib3_context(ciphers="DHE-RSA-AES128-GCM-SHA256")
-        kwargs['ssl_context'] = ssl_context
-        return super(CustomCipherAdapter, self).init_poolmanager(*args, **kwargs)
 
 
 # ssh_opts and extra_opts for rsync and rsync_project
 ssh_opts = "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
-extra_opts = "-k -q"
-if logger.getEffectiveLevel() == logging.DEBUG:
-    extra_opts = "-k"
+extra_opts = "-k"
 
 # repo regex
 repo_re = re.compile(r'.+//.*?/(.*?)/(.*?)(?:\.git)?$')
@@ -389,33 +375,24 @@ def reboot():
 
 
 def mkdir(d, o, g):
-    # sudo('mkdir -p %s' % d)
-    # sudo('chown -R %s:%s %s' % (o, g, d))
+    #sudo('mkdir -p %s' % d)
+    #sudo('chown -R %s:%s %s' % (o, g, d))
     run("mkdir -p %s" % d)
 
 
 def untar(tarfile, chdir):
     with cd(chdir):
-        if logger.getEffectiveLevel() == logging.DEBUG:
-            run('tar xvfj %s' % tarfile)
-        else:
-            run('tar xfj %s' % tarfile)
+        run('tar xvfj %s' % tarfile)
 
 
 def untar_gz(cwd, tar_file):
     with cd(cwd):
-        if logger.getEffectiveLevel() == logging.DEBUG:
-            run('tar xvfz %s' % tar_file)
-        else:
-            run('tar xfz %s' % tar_file)
+        run('tar xvfz %s' % tar_file)
 
 
 def untar_bz(cwd, tar_file):
     with cd(cwd):
-        if logger.getEffectiveLevel() == logging.DEBUG:
-            run('tar xvfj %s' % tar_file)
-        else:
-            run('tar xfj %s' % tar_file)
+        run('tar xvfj %s' % tar_file)
 
 
 def mv(src, dest):
@@ -485,8 +462,7 @@ def ensure_venv(hysds_dir, update_bash_profile=True, system_site_packages=True, 
         append('.bash_profile',
                "source $HOME/{}/bin/activate".format(hysds_dir), escape=True)
         append('.bash_profile',
-               "export FACTER_ipaddress=$(/usr/sbin/ifconfig $(/usr/sbin/route | awk '/default/{print $NF}') | grep 'inet ' | sed 's/addr://' | awk '{print $2}')",
-               escape=True)
+               "export FACTER_ipaddress=$(/usr/sbin/ifconfig $(/usr/sbin/route | awk '/default/{print $NF}') | grep 'inet ' | sed 's/addr://' | awk '{print $2}')", escape=True)
 
 
 def install_pkg_es_templates():
@@ -586,7 +562,7 @@ def install_es_template():
 
 def clean_hysds_ios():
     with prefix('source sciflo/bin/activate'):
-        run('sciflo/ops/grq2/scripts/clean_hysds_ios_indexes.sh https://localhost:9200')
+        run('sciflo/ops/grq2/scripts/clean_hysds_ios_indexes.sh http://localhost:9200')
 
 
 def create_grq_user_rules_index():
@@ -630,9 +606,9 @@ def redis_flush():
     role, hysds_dir, hostname = resolve_role()
     ctx = get_context()
     if role == 'mozart' and ctx['MOZART_REDIS_PASSWORD'] != '':
-        cmd = 'redis-cli -a {MOZART_REDIS_PASSWORD} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx)
+        cmd = 'redis-cli -a {MOZART_REDIS_PASSWORD} flushall'.format(**ctx)
     elif role == 'metrics' and ctx['METRICS_REDIS_PASSWORD'] != '':
-        cmd = 'redis-cli -a {METRICS_REDIS_PASSWORD} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx)
+        cmd = 'redis-cli -a {METRICS_REDIS_PASSWORD} flushall'.format(**ctx)
     else:
         cmd = 'redis-cli flushall'.format(**ctx)
     run(cmd)
@@ -641,41 +617,33 @@ def redis_flush():
 def mozart_redis_flush():
     ctx = get_context()
     if ctx['MOZART_REDIS_PASSWORD'] != '':
-        run('redis-cli -a {MOZART_REDIS_PASSWORD} -h {MOZART_REDIS_PVT_IP} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx))
+        run('redis-cli -a {MOZART_REDIS_PASSWORD} -h {MOZART_REDIS_PVT_IP} flushall'.format(**ctx))
     else:
-        run('redis-cli -h {MOZART_REDIS_PVT_IP} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx))
+        run('redis-cli -h {MOZART_REDIS_PVT_IP} flushall'.format(**ctx))
 
 
 def rabbitmq_queues_flush():
     ctx = get_context()
-
-    # Create a session and mount the adapter
-    session = requests.Session()
-    session.mount("https://", CustomCipherAdapter())
-
-    url = 'https://%s:15672/api/queues' % ctx['MOZART_RABBIT_FQDN']
-
-    r = session.get('%s?columns=name' % url,
-                     auth=(ctx['MOZART_RABBIT_USER'], ctx['MOZART_RABBIT_PASSWORD']),
-                     verify='/etc/pki/tls/certs/ca-bundle.crt')
+    url = 'http://%s:15672/api/queues' % ctx['MOZART_RABBIT_PVT_IP']
+    r = requests.get('%s?columns=name' % url, auth=(ctx['MOZART_RABBIT_USER'],
+                                                    ctx['MOZART_RABBIT_PASSWORD']))
     r.raise_for_status()
     res = r.json()
     for i in res:
-        r = session.delete('%s/%%2f/%s' % (url, i['name']),
-                            auth=(ctx['MOZART_RABBIT_USER'], ctx['MOZART_RABBIT_PASSWORD']),
-                            verify='/etc/pki/tls/certs/ca-bundle.crt')
+        r = requests.delete('%s/%%2f/%s' % (url, i['name']),
+                            auth=(ctx['MOZART_RABBIT_USER'], ctx['MOZART_RABBIT_PASSWORD']))
         r.raise_for_status()
         logger.debug("Deleted queue %s." % i['name'])
 
 
 def mozart_es_flush():
     ctx = get_context()
-    # run('curl -XDELETE http://{MOZART_ES_PVT_IP}:9200/_index_template/*_status'.format(**ctx))
+    #run('curl -XDELETE http://{MOZART_ES_PVT_IP}:9200/_index_template/*_status'.format(**ctx))
     run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py job_status-current'.format(**ctx))
     run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py task_status-current'.format(**ctx))
     run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py event_status-current'.format(**ctx))
     run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py worker_status-current'.format(**ctx))
-    # run('~/mozart/ops/hysds/scripts/clean_job_spec_container_indexes.sh http://{MOZART_ES_PVT_IP}:9200'.format(**ctx))
+    #run('~/mozart/ops/hysds/scripts/clean_job_spec_container_indexes.sh http://{MOZART_ES_PVT_IP}:9200'.format(**ctx))
 
 
 def npm_install_package_json(dest):
@@ -796,7 +764,6 @@ def python_setup_develop(node_type, dest):
     with prefix('source ~/%s/bin/activate' % node_type):
         with cd(dest):
             run('python setup.py develop')
-
 
 ##########################
 # ci functions
@@ -951,9 +918,9 @@ def send_shipper_conf(node_type, log_dir, cluster_jobs, redis_ip_job_status,
 
 def send_logstash_jvm_options(node_type):
     ctx = get_context(node_type)
-    ram_size_gb = int(get_ram_size_bytes()) // 1024 ** 3
+    ram_size_gb = int(get_ram_size_bytes())//1024**3
     echo("instance RAM size: {}GB".format(ram_size_gb))
-    ram_size_gb_half = int(ram_size_gb // 2)
+    ram_size_gb_half = int(ram_size_gb//2)
     ctx['LOGSTASH_HEAP_SIZE'] = 8 if ram_size_gb_half >= 8 else ram_size_gb_half
     echo("configuring logstash heap size: {}GB".format(ctx['LOGSTASH_HEAP_SIZE']))
     upload_template('jvm.options', '~/logstash/config/jvm.options',
@@ -1104,13 +1071,11 @@ def ensure_ssl(node_type):
                         template_dir=get_user_files_path())
         with cd('ssl'):
             run('openssl genrsa -des3 -passout pass:hysds -out server.key 1024', pty=False)
-            run('OPENSSL_CONF=server.cnf openssl req -passin pass:hysds -new -key server.key -out server.csr',
-                pty=False)
+            run('OPENSSL_CONF=server.cnf openssl req -passin pass:hysds -new -key server.key -out server.csr', pty=False)
             run('cp server.key server.key.org')
             run('openssl rsa -passin pass:hysds -in server.key.org -out server.key', pty=False)
             run('chmod 600 server.key*')
-            run('openssl x509 -passin pass:hysds -req -days 99999 -in server.csr -signkey server.key -out server.pem',
-                pty=False)
+            run('openssl x509 -passin pass:hysds -req -days 99999 -in server.csr -signkey server.key -out server.pem', pty=False)
 
 
 ##########################
@@ -1119,20 +1084,11 @@ def ensure_ssl(node_type):
 def ship_code(cwd, tar_file, encrypt=False):
     ctx = get_context()
     with cd(cwd):
-        if logger.getEffectiveLevel() == logging.DEBUG:
-            run('tar --exclude-vcs -cvjf %s *' % tar_file)
-        else:
-            run('tar --exclude-vcs -cjf %s *' % tar_file)
+        run('tar --exclude-vcs -cvjf %s *' % tar_file)
     if encrypt is False:
-        if logger.getEffectiveLevel() == logging.DEBUG:
-            run('aws s3 cp %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
-        else:
-            run('aws s3 cp --quiet %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
+        run('aws s3 cp %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
     else:
-        if logger.getEffectiveLevel() == logging.DEBUG:
-            run('aws s3 cp --sse %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
-        else:
-            run('aws s3 cp  --quiet --sse %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
+        run('aws s3 cp --sse %s s3://%s/' % (tar_file, ctx['CODE_BUCKET']))
 
 
 ##########################
@@ -1200,13 +1156,13 @@ def ship_style(bucket=None, encrypt=False):
     upload_template('s3-bucket-listing.html.tmpl', index_file, use_jinja=True,
                     context=ctx, template_dir=get_user_files_path())
     if encrypt is False:
-        run('aws s3 cp --quiet %s s3://%s/index.html' % (index_file, bucket))
-        run('aws s3 cp --quiet %s s3://%s/' % (list_js, bucket))
-        run('aws s3 sync --quiet %s s3://%s/index-style' % (index_style, bucket))
+        run('aws s3 cp %s s3://%s/index.html' % (index_file, bucket))
+        run('aws s3 cp %s s3://%s/' % (list_js, bucket))
+        run('aws s3 sync %s s3://%s/index-style' % (index_style, bucket))
     else:
-        run('aws s3 cp --quiet --sse %s s3://%s/index.html' % (index_file, bucket))
-        run('aws s3 cp --quiet --sse %s s3://%s/' % (list_js, bucket))
-        run('aws s3 sync --quiet --sse %s s3://%s/index-style' % (index_style, bucket))
+        run('aws s3 cp --sse %s s3://%s/index.html' % (index_file, bucket))
+        run('aws s3 cp --sse %s s3://%s/' % (list_js, bucket))
+        run('aws s3 sync --sse %s s3://%s/index-style' % (index_style, bucket))
 
 
 ##########################
