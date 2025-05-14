@@ -932,7 +932,7 @@ def ship(encrypt, debug=False):
             ship_verdi(conf, encrypt)
 
 
-def import_kibana(comp='metrics'):
+def import_kibana(comp='grq'):
     """"Update metrics component."""
 
     with tqdm(total=4) as bar:  # progress bar
@@ -949,7 +949,7 @@ def import_kibana(comp='metrics'):
         bar.update()
         set_bar_desc(bar, 'copying over dashboards and scripts')
 
-        if fab.metrics_es_engine == "opensearch":
+        if fab.grq_es_engine == "opensearch":
             execute(fab.send_template_user_override, 'import_dashboard.sh.tmpl',
                     '~/metrics/ops/kibana_metrics/import_dashboard.sh',
                     '~/mozart/ops/sdscli/sdscli/adapters/hysds/files/opensearch_dashboards_import',
