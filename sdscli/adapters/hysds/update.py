@@ -887,6 +887,8 @@ def ship_verdi(conf, encrypt=False, comp='mozart'):
                         'ops', 'ops', roles=[comp])
                 execute(fab.cp_rp_exists, '~/.netrc.verdi',
                         '~/verdi/ops/creds/.netrc', roles=[comp])
+                execute(fab.cp_rp_exists, '~/.netrc-os',
+                        '~/.netrc-os', roles=[comp])
                 execute(fab.cp_rp_exists, '~/.boto.verdi',
                         '~/verdi/ops/creds/.boto', roles=[comp])
                 execute(fab.cp_rp_exists, '~/.s3cfg.verdi',
