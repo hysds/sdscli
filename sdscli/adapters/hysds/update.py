@@ -649,10 +649,16 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
         bar.update()
 
         # ship netrc
-        netrc = os.path.join(get_user_files_path(), 'netrc')
+        netrc    = os.path.join(get_user_files_path(), 'netrc')
+        netrc_os = os.path.join(get_user_files_path(), '.netrc-os')
+
         if os.path.exists(netrc):
             set_bar_desc(bar, 'Configuring netrc')
             execute(fab.send_template, 'netrc', '.netrc', roles=[comp])
+            execute(fab.chmod, 600, '.netrc', roles=[comp])
+
+        if os.path.exists(netrc_os):
+            execute(fab.send_template, '.netrc-os', '.netrc-os', roles=[comp])
             execute(fab.chmod, 600, '.netrc', roles=[comp])
 
         # ship AWS creds
