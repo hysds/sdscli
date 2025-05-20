@@ -19,6 +19,7 @@ from pygments.token import Token
 from sdscli.log_utils import logger
 from sdscli.conf_utils import get_user_files_path, SettingsConf
 from sdscli.prompt_utils import YesNoValidator, set_bar_desc
+from os.path import expanduser
 
 from . import fabfile as fab
 
@@ -650,7 +651,7 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
 
         # ship netrc
         netrc    = os.path.join(get_user_files_path(), 'netrc')
-        netrc_os = os.path.join(get_user_files_path(), '.netrc-os')
+        netrc_os = os.path.expanduser("~/.netrc-os")
 
         if os.path.exists(netrc):
             set_bar_desc(bar, 'Configuring netrc')
@@ -658,8 +659,9 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
             execute(fab.chmod, 600, '.netrc', roles=[comp])
 
         if os.path.exists(netrc_os):
-            execute(fab.send_template, '.netrc-os', '.netrc-os', roles=[comp])
-            execute(fab.chmod, 600, '.netrc', roles=[comp])
+            set_bar_desc(bar, 'Configuring netrc-os')
+            execute(fab.send_template_user_override, '~/.netrc-os', '~/.netrc-os', roles=[comp])
+            execute(fab.chmod, 600, '~/.netrc', roles=[comp])
 
         # ship AWS creds
         set_bar_desc(bar, 'Configuring AWS creds')
