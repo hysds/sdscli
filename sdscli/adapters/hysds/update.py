@@ -660,8 +660,8 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
 
         if os.path.exists(netrc_os):
             set_bar_desc(bar, 'Configuring netrc-os')
-            execute(fab.send_template_user_override, '~/.netrc-os', '~/.netrc-os', roles=[comp])
-            execute(fab.chmod, 600, '~/.netrc', roles=[comp])
+            execute(fab.send_template, '.netrc-os', '.netrc-os', '~/', roles=[comp])
+            execute(fab.chmod, 600, '.netrc-os', roles=[comp])
 
         # ship AWS creds
         set_bar_desc(bar, 'Configuring AWS creds')
