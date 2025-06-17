@@ -1,10 +1,6 @@
 """
 SDSKit command line interface.
 """
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
 
 
 from sdscli.log_utils import logger
@@ -26,16 +22,16 @@ standard_library.install_aliases()
 def get_adapter_func(sds_type, mod_name, func_name):
     """Import adapter function."""
 
-    adapter_mod = 'sdscli.adapters.%s.%s' % (sds_type, mod_name)
+    adapter_mod = f'sdscli.adapters.{sds_type}.{mod_name}'
     try:
         return get_func(adapter_mod, func_name)
     except ImportError:
-        logger.error('Failed to import adapter module "%s" for SDS type "%s".' % (
+        logger.error('Failed to import adapter module "{}" for SDS type "{}".'.format(
             mod_name, sds_type))
         logger.error('Not implemented yet. Mahalo for trying. ;)')
         sys.exit(1)
     except AttributeError:
-        logger.error('Failed to get function "%s" from adapter module "%s".' % (
+        logger.error('Failed to get function "{}" from adapter module "{}".'.format(
             func_name, adapter_mod))
         logger.error('Not implemented yet. Mahalo for trying. ;)')
         sys.exit(1)

@@ -31,7 +31,7 @@ def daemon(check, host, name, source_type, source_id, services):
         if services is None:
             try:
                 output = check_output(
-                    ["supervisorctl", "status"], universal_newlines=True
+                    ["supervisorctl", "status"], text=True
                 )
             except Exception as e:
                 output = str(e.output)
@@ -41,7 +41,7 @@ def daemon(check, host, name, source_type, source_id, services):
             for service in services:
                 try:
                     output = check_output(
-                        ["supervisorctl", "status", service], universal_newlines=True
+                        ["supervisorctl", "status", service], text=True
                     )
                 except Exception as e:
                     output = str(e.output)

@@ -1,10 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-
-
-from builtins import str
 from future import standard_library
 standard_library.install_aliases()
 import os
@@ -155,7 +148,7 @@ def configure_bucket_website(bucket_name, c=None, **kargs):
         bw.put(**kargs)
     except ClientError as e:
         logger.error(
-            "Failed to put bucket website config with:\n{}".format(str(e)))
+            f"Failed to put bucket website config with:\n{str(e)}")
         logger.error("Check that you have privileges.")
         return 1
     bw.load()
@@ -172,7 +165,7 @@ def configure_bucket_notification(bucket_name, c=None, **kargs):
         bn.put(**kargs)
     except ClientError as e:
         logger.error(
-            "Failed to put bucket notification config with:\n{}".format(str(e)))
+            f"Failed to put bucket notification config with:\n{str(e)}")
         logger.error("Check that you have privileges.")
         return 1
     bn.load()

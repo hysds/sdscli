@@ -29,7 +29,7 @@ def daemon(check, host, name, source_type, source_id, services):
         for service in services:
             output = check_output(
                 ["sudo", "systemctl", "show", "--no-page", service],
-                universal_newlines=True,
+                text=True,
             )
             if m := ACTIVESTATE_RE.search(output):
                 active_state = m.group(1)

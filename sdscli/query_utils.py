@@ -1,7 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
@@ -72,9 +68,9 @@ def run_query(url, idx, query):
     """Query ES index."""
     es = Elasticsearch([url])
 
-    logger.info("url: {}".format(url))
-    logger.info("idx: {}".format(idx))
-    logger.info("query: {}".format(json.dumps(query, indent=2)))
+    logger.info(f"url: {url}")
+    logger.info(f"idx: {idx}")
+    logger.info(f"query: {json.dumps(query, indent=2)}")
 
     hits = []
     page = es.search(index=idx, scroll='2m', size=100, body=query)
@@ -108,8 +104,8 @@ def query_dataset(url, idx, id, version=None, sort_order="desc"):
     # get index name and url
     query_url = "{}/{}/_search?search_type=scan&scroll=60&size=100".format(
         url, idx)
-    logger.info("url: {}".format(url))
-    logger.info("idx: {}".format(idx))
+    logger.info(f"url: {url}")
+    logger.info(f"idx: {idx}")
 
     # query
     query = {
@@ -144,7 +140,7 @@ def query_dataset(url, idx, id, version=None, sort_order="desc"):
             "term": {"version.raw": version}
         })
 
-    logger.info("query: {}".format(json.dumps(query, indent=2)))
+    logger.info(f"query: {json.dumps(query, indent=2)}")
     r = requests.post(query_url, data=json.dumps(query))
     r.raise_for_status()
     scan_result = r.json()

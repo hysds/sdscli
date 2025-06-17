@@ -1,9 +1,4 @@
 """SDS package management functions."""
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-from builtins import open
 from datetime import datetime
 from future import standard_library
 standard_library.install_aliases()
@@ -36,7 +31,7 @@ def ls(args):
 
     for hit in hits:
         logger.debug(json.dumps(hit, indent=2))
-        print((hit['_id']))
+        print(hit['_id'])
     return
 
 
@@ -47,7 +42,7 @@ def export(args):
     # query for container
     cont = mozart_es.get_by_id(index=CONTAINERS_INDEX, id=cont_id, ignore=404)
     if cont['found'] is False:
-        logger.error("SDS package id {} not found.".format(cont_id))
+        logger.error(f"SDS package id {cont_id} not found.")
         return 1
 
     cont_info = cont['_source']
@@ -60,7 +55,7 @@ def export(args):
     logger.debug("export_dir: %s" % export_dir)
 
     if os.path.exists(export_dir):  # if directory exists, stop
-        logger.error("SDS package export directory {} exists. Not continuing.".format(export_dir))
+        logger.error(f"SDS package export directory {export_dir} exists. Not continuing.")
         return 1
 
     validate_dir(export_dir)  # create export directory
@@ -85,7 +80,7 @@ def export(args):
         query = {
             "query": {
                 "query_string": {
-                    "query": "container:\"{}\"".format(cont_id)
+                    "query": f"container:\"{cont_id}\""
                 }
             }
         }
@@ -178,7 +173,7 @@ def export(args):
         json.dump(manifest, f, indent=2, sort_keys=True)
 
     # tar up hysds package
-    tar_file = os.path.join(outdir, "{}.tar".format(export_name))
+    tar_file = os.path.join(outdir, f"{export_name}.tar")
     with tarfile.open(tar_file, "w") as tar:
         tar.add(export_dir, arcname=os.path.relpath(export_dir, outdir))
 
@@ -218,7 +213,7 @@ def import_pkg(args):
 
     # get code bucket
     code_bucket = conf.get('CODE_BUCKET')
-    code_bucket_url = "s3://%s/%s" % (conf.get('S3_ENDPOINT'), code_bucket)
+    code_bucket_url = "s3://{}/{}".format(conf.get('S3_ENDPOINT'), code_bucket)
     logger.debug("code_bucket: %s" % code_bucket)
     logger.debug("code_bucket_url: %s" % code_bucket_url)
 
@@ -244,7 +239,7 @@ def import_pkg(args):
             else:
                 # upload container
                 dep_img = os.path.join(export_dir, d['container_image_url'])
-                d['container_image_url'] = "%s/%s" % (code_bucket_url, d['container_image_url'])
+                d['container_image_url'] = "{}/{}".format(code_bucket_url, d['container_image_url'])
                 if args.skip_include_dependency_images:
                     logger.info(f"Skipping upload of dependency image: {dep_img}.")
                 else:
@@ -288,11 +283,11 @@ def rm(args):
 
     cont_info = mozart_es.get_by_id(index=CONTAINERS_INDEX, id=cont_id, ignore=404)  # query for container
     if cont_info['found'] is False:
-        logger.error("SDS package id {} not found.".format(cont_id))
+        logger.error(f"SDS package id {cont_id} not found.")
         return 1
 
     cont_info = cont_info['_source']
-    logger.debug("cont_info: {}".format(json.dumps(cont_info, indent=2)))
+    logger.debug(f"cont_info: {json.dumps(cont_info, indent=2)}")
 
     rmall(cont_info['url'])  # delete container from code bucket and ES
 
