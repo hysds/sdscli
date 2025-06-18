@@ -14,6 +14,7 @@ from sdscli.os_utils import validate_dir, normpath
 
 from osaka.main import get, put, rmall
 from hysds.es_util import get_mozart_es
+from hysds.utils import datetime_iso_naive
 
 CONTAINERS_INDEX = "containers"
 JOB_SPECS_INDEX = "job_specs"
@@ -264,7 +265,7 @@ def import_pkg(args):
     # index user_rules to ES
     for component in (('mozart', USER_RULES_MOZART_INDEX), ('grq', USER_RULES_GRQ_INDEX)):
         for rule in manifest.get('user_rules', {}).get(component[0], []):
-            now = datetime.utcnow().isoformat() + 'Z'
+            now = datetime_iso_naive() + 'Z'
 
             if not rule.get('creation_time', None):
                 rule['creation_time'] = now

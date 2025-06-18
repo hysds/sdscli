@@ -9,6 +9,7 @@ from datetime import datetime
 from sdscli.log_utils import logger
 from sdscli.os_utils import validate_dir, normpath
 from hysds.es_util import get_mozart_es
+from hysds.utils import datetime_iso_naive
 
 USER_RULES_MOZART = 'user_rules-mozart'
 USER_RULES_GRQ = 'user_rules-grq'
@@ -61,7 +62,7 @@ def import_rules(args):
     logger.debug(f"rules: {json.dumps(rules_file, indent=2, sort_keys=True)}")
 
     for rule in user_rules['mozart']:
-        now = datetime.utcnow().isoformat() + 'Z'
+        now = datetime_iso_naive() + 'Z'
 
         if not rule.get('creation_time', None):
             rule['creation_time'] = now
@@ -72,7 +73,7 @@ def import_rules(args):
         logger.debug(result)
 
     for rule in user_rules['grq']:
-        now = datetime.utcnow().isoformat() + 'Z'
+        now = datetime_iso_naive() + 'Z'
 
         if not rule.get('creation_time', None):
             rule['creation_time'] = now
