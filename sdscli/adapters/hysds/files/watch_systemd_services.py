@@ -6,7 +6,7 @@ import argparse
 import time
 import re
 from subprocess import check_output
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # regexes
@@ -29,7 +29,7 @@ def daemon(check, host, name, source_type, source_id, services):
         for service in services:
             output = check_output(
                 ["sudo", "systemctl", "show", "--no-page", service],
-                universal_newlines=True,
+                text=True,
             )
             if m := ACTIVESTATE_RE.search(output):
                 active_state = m.group(1)
@@ -39,7 +39,7 @@ def daemon(check, host, name, source_type, source_id, services):
                 active_enter_ts = m.group(1)
             if m := WATCHDOG_TS_RE.search(output):
                 watchdog_ts = m.group(1)
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             print(
                 f'{timestamp}, {host}, systemd, status, systemd.service={service} systemd.ActiveState={active_state} systemd.SubState={sub_state} systemd.ActiveStateTimestamp="{active_enter_ts}" systemd.WatchdogTimestamp="{watchdog_ts}"',
                 flush=True,

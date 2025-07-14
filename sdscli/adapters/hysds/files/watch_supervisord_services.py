@@ -6,7 +6,7 @@ import argparse
 import time
 import re
 from subprocess import check_output
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # regexes
@@ -31,7 +31,7 @@ def daemon(check, host, name, source_type, source_id, services):
         if services is None:
             try:
                 output = check_output(
-                    ["supervisorctl", "status"], universal_newlines=True
+                    ["supervisorctl", "status"], text=True
                 )
             except Exception as e:
                 output = str(e.output)
@@ -41,12 +41,12 @@ def daemon(check, host, name, source_type, source_id, services):
             for service in services:
                 try:
                     output = check_output(
-                        ["supervisorctl", "status", service], universal_newlines=True
+                        ["supervisorctl", "status", service], text=True
                     )
                 except Exception as e:
                     output = str(e.output)
                 lines.extend([i.strip() for i in output.split("\n")])
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         for line in lines:
             if m := RUNNING_RE.search(line):
                 g = m.groupdict()

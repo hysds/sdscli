@@ -1,14 +1,8 @@
 """
 Configuration for HySDS cluster.
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 
 
-from builtins import open
-from builtins import str
 from future import standard_library
 standard_library.install_aliases()
 import os
@@ -326,10 +320,10 @@ def copy_files():
             user_file = os.path.join(files_path, os.path.basename(sds_file))
             if os.path.isdir(sds_file) and not os.path.exists(user_file):
                 shutil.copytree(sds_file, user_file)
-                logger.debug("Copying dir %s to %s" % (sds_file, user_file))
+                logger.debug(f"Copying dir {sds_file} to {user_file}")
             elif os.path.isfile(sds_file) and not os.path.exists(user_file):
                 shutil.copy(sds_file, user_file)
-                logger.debug("Copying file %s to %s" % (sds_file, user_file))
+                logger.debug(f"Copying file {sds_file} to {user_file}")
 
 
 def configure():

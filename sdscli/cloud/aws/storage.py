@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-
-
-from builtins import int
-from builtins import open
 from future import standard_library
 standard_library.install_aliases()
 import os
@@ -49,7 +41,7 @@ def ls(args, conf):
     """List all buckets."""
 
     for bucket in get_buckets():
-        print((bucket['Name']))
+        print(bucket['Name'])
 
 
 def prompt_role(roles):
@@ -58,7 +50,7 @@ def prompt_role(roles):
     names = list(roles.keys())
     pt = [(Token, "Current roles are:\n\n")]
     for i, x in enumerate(names):
-        pt.append((Token.Param, "{}".format(i)))
+        pt.append((Token.Param, f"{i}"))
         pt.append((Token, ". {} - {} ({})\n".format(x,
                                                     roles[x]['Arn'], roles[x]['CreateDate'])))
     pt.append((Token, "\nSelect role to use for lambda execution: "))
@@ -68,7 +60,7 @@ def prompt_role(roles):
         try:
             return names[sel]
         except IndexError:
-            print(("Invalid selection: {}".format(sel)))
+            print(f"Invalid selection: {sel}")
 
 
 @cloud_config_check
@@ -115,17 +107,17 @@ def create_staging_area(args, conf):
     bucket_name = conf.get(
         'DATASET_BUCKET') if args.bucket is None else args.bucket
     bucket = get_bucket(bucket_name, c=s3_res)
-    logger.debug("bucket: {}".format(bucket))
+    logger.debug(f"bucket: {bucket}")
 
     # create SNS topic
-    logger.debug("prefix: {}".format(args.prefix))
-    logger.debug("suffix: {}".format(args.suffix))
+    logger.debug(f"prefix: {args.prefix}")
+    logger.debug(f"suffix: {args.suffix}")
     shasum = hashlib.sha224(
-        "{}-{}-{}".format(bucket_name, args.prefix, args.suffix).encode()).hexdigest()
+        f"{bucket_name}-{args.prefix}-{args.suffix}".encode()).hexdigest()
     topic_name = "{}-dataset-{}".format(conf.get('VENUE'), shasum[:4])
-    logger.debug("topic_name: {}".format(topic_name))
+    logger.debug(f"topic_name: {topic_name}")
     topic_arn = create_topic(Name=topic_name, c=sns_client)['TopicArn']
-    logger.debug("topic_arn: {}".format(topic_arn))
+    logger.debug(f"topic_arn: {topic_arn}")
 
     # add policy to allow S3 to publish to topic
     pol = {
@@ -150,7 +142,7 @@ def create_staging_area(args, conf):
                 "Resource": topic_arn,
                 "Condition": {
                     "StringEquals": {
-                        "aws:SourceArn": "arn:aws:s3:::{}".format(bucket_name)
+                        "aws:SourceArn": f"arn:aws:s3:::{bucket_name}"
                     }
                 }
             }
@@ -162,8 +154,8 @@ def create_staging_area(args, conf):
                                     AttributeValue=topic_name)
 
     # create notification event on bucket staging area
-    notification_name = "data-staged-{}".format(topic_name)
-    logger.debug("notification_name: {}".format(notification_name))
+    notification_name = f"data-staged-{topic_name}"
+    logger.debug(f"notification_name: {notification_name}")
     bn_args = {
         'NotificationConfiguration': {
             'TopicConfigurations': [
@@ -213,19 +205,19 @@ def create_staging_area(args, conf):
 
     # prompt for security groups
     cur_sgs = {i['GroupId']: i for i in get_sgs()}
-    logger.debug("cur_sgs: {}".format(pformat(cur_sgs)))
+    logger.debug(f"cur_sgs: {pformat(cur_sgs)}")
     desc = "\nSelect security groups lambda will use (space between each selected): "
     if 'LAMBDA_SECURITY_GROUPS' in sa_cfg and 'LAMBDA_VPC' in sa_cfg:
         sgs = sa_cfg.get('LAMBDA_SECURITY_GROUPS', [])
         vpc_id = sa_cfg.get('LAMBDA_VPC', None)
     else:
         sgs, vpc_id = prompt_secgroup(cur_sgs, desc)
-    logger.debug("security groups: {}".format(sgs))
-    logger.debug("VPC ID: {}".format(vpc_id))
+    logger.debug(f"security groups: {sgs}")
+    logger.debug(f"VPC ID: {vpc_id}")
 
     # get current AZs
     cur_azs = {i['ZoneName']: i for i in get_azs()}
-    logger.debug("cur_azs: {}".format(pformat(cur_azs)))
+    logger.debug(f"cur_azs: {pformat(cur_azs)}")
 
     # get subnet IDs and corresponding AZs for VPC
     subnets = []
@@ -237,19 +229,19 @@ def create_staging_area(args, conf):
             subnets.append(sn_id)
             azs.add(sn_az)
     azs = list(azs)
-    logger.debug("subnets: {}".format(pformat(subnets)))
-    logger.debug("azs: {}".format(pformat(azs)))
+    logger.debug(f"subnets: {pformat(subnets)}")
+    logger.debug(f"azs: {pformat(azs)}")
 
     # prompt for role
     roles = get_roles()
-    logger.debug("Found {} roles.".format(len(roles)))
+    logger.debug(f"Found {len(roles)} roles.")
     cur_roles = OrderedDict([(i['Arn'], i) for i in sorted(roles,
                                                            key=itemgetter('CreateDate'))])
     if 'LAMBDA_ROLE' in sa_cfg:
         role = sa_cfg['LAMBDA_ROLE']
     else:
         role = prompt_role(cur_roles)
-    logger.debug("Selected role: {}".format(role))
+    logger.debug(f"Selected role: {role}")
 
 
     # prompt for job type, release, and queue
@@ -259,21 +251,21 @@ def create_staging_area(args, conf):
         job_type = prompt(get_prompt_tokens=lambda x:
                           [(Token, "Enter job type to submit on data staged event: ")],
                           style=prompt_style).strip()
-    logger.debug("job type: {}".format(job_type))
+    logger.debug(f"job type: {job_type}")
     if 'JOB_RELEASE' in sa_cfg:
         job_release = sa_cfg['JOB_RELEASE']
     else:
         job_release = prompt(get_prompt_tokens=lambda x:
-                             [(Token, "Enter release version for {}: ".format(job_type))],
+                             [(Token, f"Enter release version for {job_type}: ")],
                              style=prompt_style).strip()
-    logger.debug("job release: {}".format(job_release))
+    logger.debug(f"job release: {job_release}")
     if 'JOB_QUEUE' in sa_cfg:
         job_queue = sa_cfg['JOB_QUEUE']
     else:
         job_queue = prompt(get_prompt_tokens=lambda x:
-                           [(Token, "Enter queue name to submit {}-{} jobs to: ".format(job_type, job_release))],
+                           [(Token, f"Enter queue name to submit {job_type}-{job_release} jobs to: ")],
                            style=prompt_style).strip()
-    logger.debug("job queue: {}".format(job_queue))
+    logger.debug(f"job queue: {job_queue}")
 
     job_types = {}
 
@@ -281,7 +273,7 @@ def create_staging_area(args, conf):
     if 'JOB_TYPES' in sa_cfg:
         job_types = sa_cfg['JOB_TYPES']
 
-    logger.debug("job types: {}".format(job_types))
+    logger.debug(f"job types: {job_types}")
 
 
     # create lambda
@@ -320,7 +312,7 @@ def create_staging_area(args, conf):
         cf_args["Environment"]["Variables"]["SIGNAL_FILE_SUFFIX"] = \
             args.suffix
     lambda_resp = lambda_client.create_function(**cf_args)
-    logger.debug("lambda_resp: {}".format(lambda_resp))
+    logger.debug(f"lambda_resp: {lambda_resp}")
 
     # add permission for sns to invoke lambda function
     lambda_client.add_permission(Action="lambda:InvokeFunction", FunctionName=function_name,
@@ -330,4 +322,4 @@ def create_staging_area(args, conf):
     # subscribe lambda endpoint to sns
     sns_resp = sns_client.subscribe(TopicArn=topic_arn, Protocol="lambda",
                                     Endpoint=lambda_resp['FunctionArn'])
-    logger.debug("sns_resp: {}".format(sns_resp))
+    logger.debug(f"sns_resp: {sns_resp}")

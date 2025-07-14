@@ -1,11 +1,3 @@
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-
-
-from builtins import super
-from builtins import open
 from future import standard_library
 standard_library.install_aliases()
 import os
@@ -33,13 +25,13 @@ class YamlConfError(Exception):
     pass
 
 
-class YamlConf(object):
+class YamlConf:
     """YAML configuration class."""
 
     def __init__(self, file):
         """Construct YamlConf instance."""
 
-        logger.debug("file: {}".format(file))
+        logger.debug(f"file: {file}")
         self._file = file
         with open(self._file) as f:
             self._cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -56,7 +48,7 @@ class YamlConf(object):
         try:
             return self._cfg[key]
         except KeyError as e:
-            raise YamlConfError("Configuration '{}' doesn't exist in {}.".format(key, self._file))
+            raise YamlConfError(f"Configuration '{key}' doesn't exist in {self._file}.")
 
 
 class SettingsConf(YamlConf):
@@ -67,4 +59,4 @@ class SettingsConf(YamlConf):
 
         if file is None:
             file = get_user_config_path()
-        super(SettingsConf, self).__init__(file)
+        super().__init__(file)

@@ -1,9 +1,4 @@
 """SDS user rules management functions."""
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
-from builtins import open
 from future import standard_library
 standard_library.install_aliases()
 
@@ -14,6 +9,7 @@ from datetime import datetime
 from sdscli.log_utils import logger
 from sdscli.os_utils import validate_dir, normpath
 from hysds.es_util import get_mozart_es
+from hysds.utils import datetime_iso_naive
 
 USER_RULES_MOZART = 'user_rules-mozart'
 USER_RULES_GRQ = 'user_rules-grq'
@@ -33,11 +29,11 @@ def export(args):
     rules['grq'] = [rule['_source'] for rule in grq_rules]
     logger.debug('%d grq user rules found' % len(grq_rules))
 
-    logger.debug("rules: {}".format(json.dumps(rules, indent=2)))
+    logger.debug(f"rules: {json.dumps(rules, indent=2)}")
 
     outfile = normpath(args.outfile)  # set export directory
     export_dir = os.path.dirname(outfile)
-    logger.debug("export_dir: {}".format(export_dir))
+    logger.debug(f"export_dir: {export_dir}")
 
     validate_dir(export_dir)  # create export directory
 
@@ -55,18 +51,18 @@ def import_rules(args):
     """
 
     rules_file = normpath(args.file)  # user rules JSON file
-    logger.debug("rules_file: {}".format(rules_file))
+    logger.debug(f"rules_file: {rules_file}")
 
     if not os.path.isfile(rules_file):
-        logger.error("HySDS user rules file {} doesn't exist.".format(rules_file))
+        logger.error(f"HySDS user rules file {rules_file} doesn't exist.")
         return 1
 
     with open(rules_file) as f:
         user_rules = json.load(f)  # read in user rules
-    logger.debug("rules: {}".format(json.dumps(rules_file, indent=2, sort_keys=True)))
+    logger.debug(f"rules: {json.dumps(rules_file, indent=2, sort_keys=True)}")
 
     for rule in user_rules['mozart']:
-        now = datetime.utcnow().isoformat() + 'Z'
+        now = datetime_iso_naive() + 'Z'
 
         if not rule.get('creation_time', None):
             rule['creation_time'] = now
@@ -77,7 +73,7 @@ def import_rules(args):
         logger.debug(result)
 
     for rule in user_rules['grq']:
-        now = datetime.utcnow().isoformat() + 'Z'
+        now = datetime_iso_naive() + 'Z'
 
         if not rule.get('creation_time', None):
             rule['creation_time'] = now

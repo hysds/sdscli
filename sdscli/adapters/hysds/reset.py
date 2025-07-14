@@ -1,10 +1,6 @@
 """
 Reset components for HySDS.
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 
 
 from future import standard_library
@@ -194,7 +190,7 @@ def reset(comp, debug=False, force=False):
     # prompt user
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
-                                                    "Resetting component[s]: {}. Continue [y/n]: ".format(comp)), (Token, " ")],
+                                                    f"Resetting component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
                       validator=YesNoValidator(), style=prompt_style) == 'y'
         if not cont:
             return 0
