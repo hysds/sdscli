@@ -1,10 +1,6 @@
 """
 SDS container orchestration functions.
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 
 
 from . import fabfile as fab
@@ -130,7 +126,7 @@ def init_metrics(conf, comp='metrics'):
 
         # rsync sdsadm
         set_bar_desc(bar, 'Syncing sdsadm')
-        execute(fab.rm_rf, '~/{}/ops/sdsadm'.format(comp), roles=[comp])
+        execute(fab.rm_rf, f'~/{comp}/ops/sdsadm', roles=[comp])
         execute(fab.rsync_sdsadm, roles=[comp])
         bar.update()
 
@@ -260,11 +256,11 @@ def init_comp(comp, conf):
 
     with tqdm(total=len(comps)) as bar:
         for c in comps:
-            set_bar_desc(bar, 'Initializing {}'.format(c))
-            globals()["init_{}".format(c)](conf)
+            set_bar_desc(bar, f'Initializing {c}')
+            globals()[f"init_{c}"](conf)
             bar.update()
-            set_bar_desc(bar, 'Initialized {}'.format(c))
-        set_bar_desc(bar, "Initialized {}".format(comp))
+            set_bar_desc(bar, f'Initialized {c}')
+        set_bar_desc(bar, f"Initialized {comp}")
         print("")
 
 
@@ -274,7 +270,7 @@ def init(comp, debug=False, force=False):
     # prompt user
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
-                                                    "Initializing component[s]: {}. Continue [y/n]: ".format(comp)), (Token, " ")],
+                                                    f"Initializing component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
                       validator=YesNoValidator(), style=prompt_style) == 'y'
         if not cont:
             return 0
@@ -302,10 +298,10 @@ def start_comp(comp, release, conf):
         comps = [comp]
     with tqdm(total=len(comps)) as bar:
         for c in comps:
-            set_bar_desc(bar, 'Starting {} ({})'.format(c, release))
+            set_bar_desc(bar, f'Starting {c} ({release})')
             execute(fab.start_sdsadm, release, roles=[c])
             bar.update()
-            set_bar_desc(bar, 'Started {} ({})'.format(c, release))
+            set_bar_desc(bar, f'Started {c} ({release})')
         set_bar_desc(bar, "Started all")
         print("")
 
@@ -316,7 +312,7 @@ def start(comp, release, debug=False, force=False):
     # prompt user
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
-                                                    "Starting component[s]: {}. Continue [y/n]: ".format(comp)), (Token, " ")],
+                                                    f"Starting component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
                       validator=YesNoValidator(), style=prompt_style) == 'y'
         if not cont:
             return 0
@@ -340,10 +336,10 @@ def stop_comp(comp, conf):
         comps = [comp]
     with tqdm(total=len(comps)) as bar:
         for c in comps:
-            set_bar_desc(bar, 'Stopping {}'.format(c))
+            set_bar_desc(bar, f'Stopping {c}')
             execute(fab.stop_sdsadm, roles=[c])
             bar.update()
-            set_bar_desc(bar, 'Stopped {}'.format(c))
+            set_bar_desc(bar, f'Stopped {c}')
         set_bar_desc(bar, "Stopped all")
         print("")
 
@@ -354,7 +350,7 @@ def stop(comp, debug=False, force=False):
     # prompt user
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
-                                                    "Stopping component[s]: {}. Continue [y/n]: ".format(comp)), (Token, " ")],
+                                                    f"Stopping component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
                       validator=YesNoValidator(), style=prompt_style) == 'y'
         if not cont:
             return 0

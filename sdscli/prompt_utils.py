@@ -1,9 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-
-
 from future import standard_library
 standard_library.install_aliases()
 import os
@@ -92,41 +86,41 @@ class PriceValidator(Validator):
 def set_bar_desc(bar, message):
     """Set bar description."""
 
-    bar.set_description("{0: >20.20}".format(message))
+    bar.set_description(f"{message: >20.20}")
 
 
 def highlight(s, color="green", bold=True):
     """Return colored string."""
 
     color_code = COLOR_CODE[color].format("1" if bold else "0")
-    return "\033[{};40m{}\033[0m".format(color_code, s)
+    return f"\033[{color_code};40m{s}\033[0m"
 
 
 def blink(s):
     """Return blinking string."""
 
-    return "\033[5;40m{}\033[25m".format(s)
+    return f"\033[5;40m{s}\033[25m"
 
 
 def print_component_header(comp):
     """Print component header."""
 
-    print((highlight("#" * 40, 'cyan')))
-    print((highlight(comp, 'cyan', True)))
-    print((highlight("#" * 40, 'cyan')))
+    print(highlight("#" * 40, 'cyan'))
+    print(highlight(comp, 'cyan', True))
+    print(highlight("#" * 40, 'cyan'))
 
 
 def print_tps_header(comp):
     """Print tps header."""
 
-    print((highlight("-" * 40, 'cyan')))
-    print((highlight('third-party services', 'cyan', True)))
-    print((highlight("-" * 40, 'cyan')))
+    print(highlight("-" * 40, 'cyan'))
+    print(highlight('third-party services', 'cyan', True))
+    print(highlight("-" * 40, 'cyan'))
 
 
 def print_supervisor_header(comp):
     """Print supervisor header."""
 
-    print((highlight("-" * 40, 'cyan')))
-    print((highlight('supervised services', 'cyan', True)))
-    print((highlight("-" * 40, 'cyan')))
+    print(highlight("-" * 40, 'cyan'))
+    print(highlight('supervised services', 'cyan', True))
+    print(highlight("-" * 40, 'cyan'))

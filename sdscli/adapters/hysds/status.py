@@ -1,10 +1,6 @@
 """
 Status of HySDS components.
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 
 
 from future import standard_library
@@ -54,7 +50,7 @@ def print_rabbitmq_status(user, password, host):
         user=user,
         password=password,
         host=host)
-    logger.debug("amqp_url: {}".format(amqp_url))
+    logger.debug(f"amqp_url: {amqp_url}")
     try:
         conn = kombu.Connection(amqp_url)
         conn.ensure_connection(max_retries=3)
@@ -106,9 +102,9 @@ def print_es_status(host, component):
         pass
 
     if status == 'active':
-        print(("{}: {}".format(service, highlight(status.upper()))))
+        print(f"{service}: {highlight(status.upper())}")
     else:
-        print(("{}: {}".format(service, blink(highlight(status.upper(), 'red')))))
+        print("{}: {}".format(service, blink(highlight(status.upper(), 'red'))))
 
 
 def print_http_status(server, url):
@@ -117,9 +113,9 @@ def print_http_status(server, url):
     try:
         r = requests.get(url, verify=False)
         r.raise_for_status()
-        print(("{}: {}".format(server, highlight("RUNNING"))))
+        print("{}: {}".format(server, highlight("RUNNING")))
     except Exception as e:
-        print(("{}: {}".format(server, blink(highlight("NOT RUNNING", 'red', True)))))
+        print("{}: {}".format(server, blink(highlight("NOT RUNNING", 'red', True))))
         print(e)
 
 
@@ -130,12 +126,12 @@ def print_service_status(service, ret, debug=False):
     status_match = re.search(r'Active:\s+(.+?)\s+', stdout)
     if not status_match:
         raise RuntimeError(
-            "Failed to extract status of {} from stdout:\n{}".format(service, stdout))
+            f"Failed to extract status of {service} from stdout:\n{stdout}")
     status = status_match.group(1)
     if status == 'active':
-        print(("{}: {}".format(service, highlight(status.upper()))))
+        print(f"{service}: {highlight(status.upper())}")
     else:
-        print(("{}: {}".format(service, blink(highlight(status.upper(), 'red')))))
+        print("{}: {}".format(service, blink(highlight(status.upper(), 'red'))))
     if debug:
         print(stdout)
 

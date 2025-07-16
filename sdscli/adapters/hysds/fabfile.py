@@ -1,10 +1,6 @@
 """
 Fabric file for HySDS.
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 
 from sdscli.prompt_utils import highlight, blink
 from sdscli.conf_utils import get_user_config_path, get_user_files_path
@@ -22,7 +18,6 @@ import logging
 import yaml
 import re
 import os
-from builtins import open
 from future import standard_library
 
 standard_library.install_aliases()
@@ -239,16 +234,16 @@ def ln_sf(src, dest):
     if exists(dest):
         run('rm -rf %s' % dest)
     with cd(os.path.dirname(dest)):
-        run('ln -sf %s %s' % (src, os.path.basename(dest)))
+        run(f'ln -sf {src} {os.path.basename(dest)}')
 
 
 def cp_rp(src, dest):
-    run('cp -rp %s %s' % (src, dest))
+    run(f'cp -rp {src} {dest}')
 
 
 def cp_rp_exists(src, dest):
     if exists(src):
-        run('cp -rp %s %s' % (src, dest))
+        run(f'cp -rp {src} {dest}')
 
 
 def rm_rf(path):
@@ -354,34 +349,34 @@ def svn_co(path, svn_url):
 
 
 def svn_rev(rev, path):
-    run('svn up -r %s %s' % (rev, path))
+    run(f'svn up -r {rev} {path}')
 
 
 def ls(path):
-    run('ls -al {}'.format(path))
+    run(f'ls -al {path}')
 
 
 def cat(path):
-    run('cat {}'.format(path))
+    run(f'cat {path}')
 
 
 def tail(path):
-    run('tail {}'.format(path))
+    run(f'tail {path}')
 
 
 def tail_f(path):
-    run('tail -f {}'.format(path))
+    run(f'tail -f {path}')
 
 
 def grep(grep_str, dir_path):
     try:
-        run('grep -r %s %s' % (grep_str, dir_path))
+        run(f'grep -r {grep_str} {dir_path}')
     except:
         pass
 
 
 def chmod(perms, path):
-    run('chmod -R %s %s' % (perms, path))
+    run(f'chmod -R {perms} {path}')
 
 
 def reboot():
@@ -419,7 +414,7 @@ def untar_bz(cwd, tar_file):
 
 
 def mv(src, dest):
-    sudo('mv -f %s %s' % (src, dest))
+    sudo(f'mv -f {src} {dest}')
 
 
 def rsync(src, dest):
@@ -449,7 +444,7 @@ def stop_docker_containers():
 def systemctl(cmd, service):
     with settings(warn_only=True):
         with hide('everything'):
-            return run('sudo systemctl %s %s' % (cmd, service), pty=False)
+            return run(f'sudo systemctl {cmd} {service}', pty=False)
 
 
 def status():
@@ -458,7 +453,7 @@ def status():
         with prefix('source %s/bin/activate' % hysds_dir):
             run('supervisorctl status')
     else:
-        print((blink(highlight("Supervisord is not running on %s." % role, 'red'))))
+        print(blink(highlight("Supervisord is not running on %s." % role, 'red')))
 
 
 def ensure_venv(hysds_dir, update_bash_profile=True, system_site_packages=True, install_supervisor=True):
@@ -483,7 +478,7 @@ def ensure_venv(hysds_dir, update_bash_profile=True, system_site_packages=True, 
           context['OPS_USER'], context['OPS_USER'])
     if update_bash_profile:
         append('.bash_profile',
-               "source $HOME/{}/bin/activate".format(hysds_dir), escape=True)
+               f"source $HOME/{hysds_dir}/bin/activate", escape=True)
         append('.bash_profile',
                "export FACTER_ipaddress=$(/usr/sbin/ifconfig $(/usr/sbin/route | awk '/default/{print $NF}') | grep 'inet ' | sed 's/addr://' | awk '{print $2}')",
                escape=True)
@@ -810,10 +805,10 @@ def get_ci_job_info(repo, branch=None):
         raise RuntimeError("Failed to parse repo owner and name: %s" % repo)
     owner, name = match.groups()
     if branch is None:
-        job_name = "%s_container-builder_%s_%s" % (ctx['VENUE'], owner, name)
+        job_name = "{}_container-builder_{}_{}".format(ctx['VENUE'], owner, name)
         config_tmpl = 'config.xml'
     else:
-        job_name = "%s_container-builder_%s_%s_%s" % (
+        job_name = "{}_container-builder_{}_{}_{}".format(
             ctx['VENUE'], owner, name, branch)
         config_tmpl = 'config-branch.xml'
     return job_name, config_tmpl
@@ -825,7 +820,7 @@ def add_ci_job(repo, proto, branch=None, release=False):
         ctx = get_context()
         ctx['PROJECT_URL'] = repo
         ctx['BRANCH'] = branch
-        job_dir = '%s/jobs/%s' % (ctx['JENKINS_DIR'], job_name)
+        job_dir = '{}/jobs/{}'.format(ctx['JENKINS_DIR'], job_name)
         dest_file = '%s/config.xml' % job_dir
         mkdir(job_dir, None, None)
         chmod('777', job_dir)
@@ -834,10 +829,10 @@ def add_ci_job(repo, proto, branch=None, release=False):
         else:
             ctx['BRANCH_SPEC'] = "**"
         if proto in ('s3', 's3s'):
-            ctx['STORAGE_URL'] = "%s://%s/%s/" % (
+            ctx['STORAGE_URL'] = "{}://{}/{}/".format(
                 proto, ctx['S3_ENDPOINT'], ctx['CODE_BUCKET'])
         elif proto == 'gs':
-            ctx['STORAGE_URL'] = "%s://%s/%s/" % (
+            ctx['STORAGE_URL'] = "{}://{}/{}/".format(
                 proto, ctx['GS_ENDPOINT'], ctx['CODE_BUCKET'])
         elif proto in ('dav', 'davs'):
             ctx['STORAGE_URL'] = "%s://%s:%s@%s/repository/products/containers/" % \
@@ -1145,29 +1140,29 @@ def send_awscreds(suffix=None):
         boto_file = '.boto'
         s3cfg_file = '.s3cfg'
     else:
-        aws_dir = '.aws{}'.format(suffix)
-        boto_file = '.boto{}'.format(suffix)
-        s3cfg_file = '.s3cfg{}'.format(suffix)
+        aws_dir = f'.aws{suffix}'
+        boto_file = f'.boto{suffix}'
+        s3cfg_file = f'.s3cfg{suffix}'
     if exists(aws_dir):
-        run('rm -rf {}'.format(aws_dir))
+        run(f'rm -rf {aws_dir}')
     mkdir(aws_dir, context['OPS_USER'], context['OPS_USER'])
-    run('chmod 700 {}'.format(aws_dir))
-    upload_template('aws_config', '{}/config'.format(aws_dir), use_jinja=True, context=ctx,
+    run(f'chmod 700 {aws_dir}')
+    upload_template('aws_config', f'{aws_dir}/config', use_jinja=True, context=ctx,
                     template_dir=get_user_files_path())
     if ctx['AWS_ACCESS_KEY'] not in (None, ""):
-        upload_template('aws_credentials', '{}/credentials'.format(aws_dir), use_jinja=True, context=ctx,
+        upload_template('aws_credentials', f'{aws_dir}/credentials', use_jinja=True, context=ctx,
                         template_dir=get_user_files_path())
-    run('chmod 600 {}/*'.format(aws_dir))
+    run(f'chmod 600 {aws_dir}/*')
     if exists(boto_file):
-        run('rm -rf {}'.format(boto_file))
+        run(f'rm -rf {boto_file}')
     upload_template('boto', boto_file, use_jinja=True, context=ctx,
                     template_dir=get_user_files_path())
-    run('chmod 600 {}'.format(boto_file))
+    run(f'chmod 600 {boto_file}')
     if exists(s3cfg_file):
-        run('rm -rf {}'.format(s3cfg_file))
+        run(f'rm -rf {s3cfg_file}')
     upload_template('s3cfg', s3cfg_file, use_jinja=True, context=ctx,
                     template_dir=get_user_files_path())
-    run('chmod 600 {}'.format(s3cfg_file))
+    run(f'chmod 600 {s3cfg_file}')
 
 
 ##########################
@@ -1216,7 +1211,7 @@ def create_zip(zip_dir, zip_file):
     if exists(zip_file):
         run('rm -rf %s' % zip_file)
     with cd(zip_dir):
-        run('zip -r -9 {} *'.format(zip_file))
+        run(f'zip -r -9 {zip_file} *')
 
 
 ##########################
@@ -1233,21 +1228,21 @@ def init_sdsadm():
     role, hysds_dir, hostname = resolve_role()
     with cd(os.path.join(hysds_dir, 'ops', 'sdsadm')):
         with prefix('source ~/%s/bin/activate' % hysds_dir):
-            run("./sdsadm init {} -f".format(role))
+            run(f"./sdsadm init {role} -f")
 
 
 def start_sdsadm(release):
     role, hysds_dir, hostname = resolve_role()
     with cd(os.path.join(hysds_dir, 'ops', 'sdsadm')):
         with prefix('source ~/%s/bin/activate' % hysds_dir):
-            run("./sdsadm -r {} start {} -d".format(release, role))
+            run(f"./sdsadm -r {release} start {role} -d")
 
 
 def stop_sdsadm():
     role, hysds_dir, hostname = resolve_role()
     with cd(os.path.join(hysds_dir, 'ops', 'sdsadm')):
         with prefix('source ~/%s/bin/activate' % hysds_dir):
-            run("./sdsadm stop {}".format(role))
+            run(f"./sdsadm stop {role}")
 
 
 def logs_sdsadm(follow=False):
@@ -1255,23 +1250,23 @@ def logs_sdsadm(follow=False):
     with cd(os.path.join(hysds_dir, 'ops', 'sdsadm')):
         with prefix('source ~/%s/bin/activate' % hysds_dir):
             if follow:
-                run("./sdsadm logs {} -f".format(role))
+                run(f"./sdsadm logs {role} -f")
             else:
-                run("./sdsadm logs {}".format(role))
+                run(f"./sdsadm logs {role}")
 
 
 def ps_sdsadm():
     role, hysds_dir, hostname = resolve_role()
     with cd(os.path.join(hysds_dir, 'ops', 'sdsadm')):
         with prefix('source ~/%s/bin/activate' % hysds_dir):
-            run("./sdsadm ps {}".format(role))
+            run(f"./sdsadm ps {role}")
 
 
 def run_sdsadm(cmd):
     role, hysds_dir, hostname = resolve_role()
     with cd(os.path.join(hysds_dir, 'ops', 'sdsadm')):
         with prefix('source ~/%s/bin/activate' % hysds_dir):
-            run("./sdsadm run {} {}".format(role, cmd))
+            run(f"./sdsadm run {role} {cmd}")
 
 
 def conf_sdsadm(tmpl, dest, shared=False):

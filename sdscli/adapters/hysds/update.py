@@ -1,10 +1,6 @@
 """
 Update components for HySDS.
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 
@@ -829,7 +825,7 @@ def update(comp, debug=False, force=False, ndeps=False, config_only=False):
     # prompt user
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
-                                                    "Updating component[s]: {}. Continue [y/n]: ".format(comp)), (Token, " ")],
+                                                    f"Updating component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
                       validator=YesNoValidator(), style=prompt_style) == 'y'
         if not cont:
             return 0
@@ -862,7 +858,7 @@ def ship_verdi(conf, encrypt=False, comp='mozart'):
         # iterate over queues
         for queue in queues:
 
-            set_bar_desc(bar, 'Shipping {} queue'.format(queue))
+            set_bar_desc(bar, f'Shipping {queue} queue')
 
             # progress bar
             with tqdm(total=5) as queue_bar:
@@ -920,9 +916,9 @@ def ship_verdi(conf, encrypt=False, comp='mozart'):
                 execute(fab.mkdir, '~/code_configs',
                         'ops', 'ops', roles=[comp])
                 execute(
-                    fab.rm_rf, '~/code_configs/{}-{}.tbz2'.format(queue, venue), roles=[comp])
+                    fab.rm_rf, f'~/code_configs/{queue}-{venue}.tbz2', roles=[comp])
                 execute(fab.ship_code, '~/verdi/ops',
-                        '~/code_configs/{}-{}.tbz2'.format(queue, venue), encrypt, roles=[comp])
+                        f'~/code_configs/{queue}-{venue}.tbz2', encrypt, roles=[comp])
                 queue_bar.update()
             bar.update()
         set_bar_desc(bar, 'Finished shipping')
@@ -1012,7 +1008,7 @@ def kibana(job_type, debug=False, force=False):
 
     if not force:  # prompt user
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
-                                                    "Updating Kibana: {}. Continue [y/n]: ".format(job_type)), (Token, " ")],
+                                                    f"Updating Kibana: {job_type}. Continue [y/n]: "), (Token, " ")],
                       validator=YesNoValidator(), style=prompt_style) == 'y'
         if not cont:
             return 0

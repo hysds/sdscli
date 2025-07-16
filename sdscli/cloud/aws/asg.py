@@ -1,11 +1,3 @@
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
-
-
-from builtins import int
-from builtins import map
 from future import standard_library
 standard_library.install_aliases()
 import os
@@ -43,7 +35,7 @@ def ls(args, conf):
     """List all Autoscaling groups."""
 
     for asg in get_asgs():
-        print((asg['AutoScalingGroupName']))
+        print(asg['AutoScalingGroupName'])
 
 
 def prompt_image(images):
@@ -52,7 +44,7 @@ def prompt_image(images):
     ids = list(images.keys())
     pt = [(Token, "Current verdi AMIs are:\n\n")]
     for i, x in enumerate(ids):
-        pt.append((Token.Param, "{}".format(i)))
+        pt.append((Token.Param, f"{i}"))
         pt.append(
             (Token, ". {} - {} ({})\n".format(images[x]['Name'], x, images[x]['CreationDate'])))
     pt.append((Token, "\nSelect verdi AMI to use for launch configurations: "))
@@ -62,7 +54,7 @@ def prompt_image(images):
         try:
             return ids[sel]
         except IndexError:
-            print(("Invalid selection: {}".format(sel)))
+            print(f"Invalid selection: {sel}")
 
 
 def prompt_keypair(keypairs):
@@ -71,8 +63,8 @@ def prompt_keypair(keypairs):
     ids = list(keypairs.keys())
     pt = [(Token, "Current key pairs are:\n\n")]
     for i, x in enumerate(ids):
-        pt.append((Token.Param, "{}".format(i)))
-        pt.append((Token, ". {}\n".format(x)))
+        pt.append((Token.Param, f"{i}"))
+        pt.append((Token, f". {x}\n"))
     pt.append((Token, "\nSelect key pair to use for launch configurations: "))
     while True:
         sel = int(prompt(get_prompt_tokens=lambda x: pt, style=prompt_style,
@@ -80,7 +72,7 @@ def prompt_keypair(keypairs):
         try:
             return ids[sel]
         except IndexError:
-            print(("Invalid selection: {}".format(sel)))
+            print(f"Invalid selection: {sel}")
 
 
 def prompt_roles(roles):
@@ -89,8 +81,8 @@ def prompt_roles(roles):
     ids = list(roles.keys())
     pt = [(Token, "Current roles are:\n\n")]
     for i, x in enumerate(ids):
-        pt.append((Token.Param, "{}".format(i)))
-        pt.append((Token, ". {}\n".format(x)))
+        pt.append((Token.Param, f"{i}"))
+        pt.append((Token, f". {x}\n"))
     pt.append((Token, "\nSelect role to use for launch configurations: "))
     while True:
         sel = int(prompt(get_prompt_tokens=lambda x: pt, style=prompt_style,
@@ -98,7 +90,7 @@ def prompt_roles(roles):
         try:
             return ids[sel]
         except IndexError:
-            print(("Invalid selection: {}".format(sel)))
+            print(f"Invalid selection: {sel}")
 
 
 def prompt_secgroup(sgs, desc=None):
@@ -109,7 +101,7 @@ def prompt_secgroup(sgs, desc=None):
     ids = list(sgs.keys())
     pt = [(Token, "Current security groups are:\n\n")]
     for i, x in enumerate(ids):
-        pt.append((Token.Param, "{}".format(i)))
+        pt.append((Token.Param, f"{i}"))
         pt.append(
             (Token, ". {} - {} - {}\n".format(sgs[x]['VpcId'], sgs[x]['GroupName'], x)))
     pt.append((Token, desc))
@@ -124,14 +116,14 @@ def prompt_secgroup(sgs, desc=None):
                 sgs_ids.add(ids[sel])
                 vpc_ids.add(sgs[ids[sel]]['VpcId'])
             except IndexError:
-                print(("Invalid selection: {}".format(sel)))
+                print(f"Invalid selection: {sel}")
                 invalid = True
                 break
         if invalid:
             continue
         if len(vpc_ids) > 1:
-            print(("Invalid selections. Security groups from multiple VPC IDs selected: {}".format(
-                list(vpc_ids))))
+            print("Invalid selections. Security groups from multiple VPC IDs selected: {}".format(
+                list(vpc_ids)))
             continue
         return list(sgs_ids), list(vpc_ids)[0]
 
@@ -149,15 +141,15 @@ def create(args, conf):
 
     # get current autoscaling groups
     cur_asgs = {i['AutoScalingGroupName']: i for i in get_asgs(c)}
-    logger.debug("cur_asgs: {}".format(pformat(cur_asgs)))
+    logger.debug(f"cur_asgs: {pformat(cur_asgs)}")
 
     # get current key pairs
     cur_keypairs = {i['KeyName']: i for i in get_keypairs(ec2)}
-    logger.debug("cur_keypairs: {}".format(pformat(cur_keypairs)))
+    logger.debug(f"cur_keypairs: {pformat(cur_keypairs)}")
 
     # get roles
     cur_roles = {i['RoleName']: i for i in get_roles()}
-    logger.debug("cur_roles: {}".format(pformat(cur_roles)))
+    logger.debug(f"cur_roles: {pformat(cur_roles)}")
 
     # get current AMIs
     verdi_re = re.compile(r'(?:verdi|autoscale)', re.IGNORECASE)
@@ -165,26 +157,26 @@ def create(args, conf):
                               [x for x in sorted(get_images(c=ec2, Filters=[{'Name': 'is-public', 'Values': ['false']}]),
                                                  key=itemgetter('CreationDate')) if verdi_re.search(x['Name'])]
                               ])
-    logger.debug("cur_images: {}".format(json.dumps(cur_images, indent=2)))
-    logger.debug("cur_images.keys(): {}".format(list(cur_images.keys())))
+    logger.debug(f"cur_images: {json.dumps(cur_images, indent=2)}")
+    logger.debug(f"cur_images.keys(): {list(cur_images.keys())}")
 
     # get current security groups
     cur_sgs = {i['GroupId']: i for i in get_sgs(ec2)}
-    logger.debug("cur_sgs: {}".format(pformat(cur_sgs)))
+    logger.debug(f"cur_sgs: {pformat(cur_sgs)}")
 
     # prompt for verdi AMI
     if 'AMI' in asg_cfg:
         ami = asg_cfg['AMI']
     else:
         ami = prompt_image(cur_images)
-    logger.debug("AMI ID: {}".format(ami))
+    logger.debug(f"AMI ID: {ami}")
 
     # prompt for key pair
     if 'KEYPAIR' in asg_cfg:
         keypair = asg_cfg['KEYPAIR']
     else:
         keypair = prompt_keypair(cur_keypairs)
-    logger.debug("key pair: {}".format(keypair))
+    logger.debug(f"key pair: {keypair}")
 
     # prompt for roles
     use_role = False
@@ -193,13 +185,13 @@ def create(args, conf):
     else:
         use_role = prompt(get_prompt_tokens=lambda x: [(Token, "Do you want to use instance roles [y/n]: ")],
                           validator=YesNoValidator(), style=prompt_style).strip() == 'y'
-    logger.debug("use_role: {} {}".format(use_role, type(use_role)))
+    logger.debug(f"use_role: {use_role} {type(use_role)}")
     if use_role:
         if 'ROLE' in asg_cfg:
             role = asg_cfg['ROLE']
         else:
             role = prompt_roles(cur_roles)
-        logger.debug("role: {}".format(role))
+        logger.debug(f"role: {role}")
 
     # prompt for security groups
     if 'SECURITY_GROUPS' in asg_cfg and 'VPC' in asg_cfg:
@@ -207,12 +199,12 @@ def create(args, conf):
         vpc_id = asg_cfg.get('VPC', None)
     else:
         sgs, vpc_id = prompt_secgroup(cur_sgs)
-    logger.debug("security groups: {}".format(sgs))
-    logger.debug("VPC ID: {}".format(vpc_id))
+    logger.debug(f"security groups: {sgs}")
+    logger.debug(f"VPC ID: {vpc_id}")
 
     # get current AZs
     cur_azs = {i['ZoneName']: i for i in get_azs(ec2)}
-    logger.debug("cur_azs: {}".format(pformat(cur_azs)))
+    logger.debug(f"cur_azs: {pformat(cur_azs)}")
 
     # get subnet IDs and corresponding AZs for VPC
     subnets = []
@@ -224,8 +216,8 @@ def create(args, conf):
             subnets.append(sn_id)
             azs.add(sn_az)
     azs = list(azs)
-    logger.debug("subnets: {}".format(pformat(subnets)))
-    logger.debug("azs: {}".format(pformat(azs)))
+    logger.debug(f"subnets: {pformat(subnets)}")
+    logger.debug(f"azs: {pformat(azs)}")
 
 
     # check asgs that need to be configured
@@ -258,11 +250,11 @@ def create(args, conf):
 
         asg = "{}-{}".format(conf.get('VENUE'), queue)
         if asg in cur_asgs:
-            print(("ASG {} already exists. Skipping.".format(asg)))
+            print(f"ASG {asg} already exists. Skipping.")
             continue
 
         print_component_header(
-            "Configuring autoscaling group:\n{}".format(asg))
+            f"Configuring autoscaling group:\n{asg}")
 
         # get user data
         user_data = "BUNDLE_URL=s3://{}/{}-{}.tbz2".format(conf.get('CODE_BUCKET'),
@@ -287,12 +279,12 @@ def create(args, conf):
         if use_role:
             lt_args['LaunchTemplateData']['IamInstanceProfile'] = { 'Name': role }
 
-        lt = "{}-launch-template".format(asg)
+        lt = f"{asg}-launch-template"
         lt_args['LaunchTemplateName'] = lt
         lt_info = create_lt(ec2, **lt_args)
         logger.debug("Launch template {}: {}".format(
             lt, pformat(lt_info)))
-        print(("Created launch template {}.".format(lt)))
+        print(f"Created launch template {lt}.")
 
         # get autoscaling group config
         asg_args = {
@@ -326,7 +318,7 @@ def create(args, conf):
             'Tags': [
                 {
                     'Key': 'Name',
-                    'Value': '{}-worker'.format(asg),
+                    'Value': f'{asg}-worker',
                     'PropagateAtLaunch': True,
                 },
                 {
@@ -346,17 +338,17 @@ def create(args, conf):
                 },
             ],
         }
-        logger.debug("asg_args: {}".format(pformat(asg_args)))
+        logger.debug(f"asg_args: {pformat(asg_args)}")
         asg_info = create_asg(c, **asg_args)
-        logger.debug("Autoscaling group {}: {}".format(asg, pformat(asg_info)))
-        print("Created autoscaling group {}".format(asg))
+        logger.debug(f"Autoscaling group {asg}: {pformat(asg_info)}")
+        print(f"Created autoscaling group {asg}")
 
         # add target tracking scaling policy
-        policy_name = "{}-target-tracking".format(asg)
+        policy_name = f"{asg}-target-tracking"
         if total_jobs_metric:
-            metric_name = "JobsPerInstance-{}".format(asg)
+            metric_name = f"JobsPerInstance-{asg}"
         else:
-            metric_name = "JobsWaitingPerInstance-{}".format(asg)
+            metric_name = f"JobsWaitingPerInstance-{asg}"
         ttsp_args = {
             'AutoScalingGroupName': asg,
             'PolicyName': policy_name,
@@ -381,8 +373,8 @@ def create(args, conf):
                 'DisableScaleIn': True
             },
         }
-        logger.debug("ttsp_args: {}".format(pformat(ttsp_args)))
+        logger.debug(f"ttsp_args: {pformat(ttsp_args)}")
         ttsp_info = c.put_scaling_policy(**ttsp_args)
         logger.debug("Target tracking scaling policy {}: {}".format(
             policy_name, pformat(ttsp_info)))
-        print(("Added target tracking scaling policy {} to {}".format(policy_name, asg)))
+        print(f"Added target tracking scaling policy {policy_name} to {asg}")

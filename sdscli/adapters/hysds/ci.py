@@ -1,10 +1,6 @@
 """
 Continuous integration functions.
 """
-from __future__ import unicode_literals
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
 
 
 from future import standard_library
@@ -61,7 +57,7 @@ def add_job(args):
     else:
         repo_url = args.repo
 
-    logger.debug("repo_url: {}".format(repo_url))
+    logger.debug(f"repo_url: {repo_url}")
 
     # add jenkins job for branch or release
     if args.branch is None:

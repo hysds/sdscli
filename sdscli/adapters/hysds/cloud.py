@@ -1,10 +1,6 @@
 """
 SDS cloud management functions.
 """
-from __future__ import print_function
-from __future__ import unicode_literals
-from __future__ import division
-from __future__ import absolute_import
 
 
 from future import standard_library
@@ -35,16 +31,16 @@ def ls(args):
 
     # check which cloud platforms configured
     for importer, mod_name, ispkg in pkgutil.iter_modules(sdscli.cloud.__path__):
-        mod = get_module('sdscli.cloud.{}.utils'.format(mod_name))
-        print(("{}: {}".format(mod_name, highlight("configured", 'green') if
-                               mod.is_configured() else highlight("unimplemented or not configured", 'red'))))
+        mod = get_module(f'sdscli.cloud.{mod_name}.utils')
+        print("{}: {}".format(mod_name, highlight("configured", 'green') if
+                               mod.is_configured() else highlight("unimplemented or not configured", 'red')))
 
 
 def asg(args):
     """ASG management functions."""
 
     # print args
-    logger.debug("In asg(): {}".format(args))
+    logger.debug(f"In asg(): {args}")
 
     # get user's SDS conf settings
     conf = SettingsConf()
@@ -65,7 +61,7 @@ def storage(args):
     """Cloud storage management functions."""
 
     # print args
-    logger.debug("In storage(): {}".format(args))
+    logger.debug(f"In storage(): {args}")
 
     # get user's SDS conf settings
     conf = SettingsConf()

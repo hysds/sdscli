@@ -1,6 +1,3 @@
-from __future__ import print_function
-from __future__ import division
-from __future__ import absolute_import
 from setuptools import setup, find_packages
 import sdscli
 
@@ -19,7 +16,6 @@ setup(
         "prompt-toolkit>=1.0,<2.0",
         "tqdm>=4.32.1",
         "backoff>=1.8.0",
-        "future>=0.17.1",
         "requests>=2.22.0",
         "kombu>=4.5.0",
         "redis>=3.2.1",
