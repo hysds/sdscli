@@ -22,15 +22,6 @@ from future import standard_library
 
 standard_library.install_aliases()
 
-
-# class for custom cipher for rabbitmq
-class CustomCipherAdapter(HTTPAdapter):
-    def init_poolmanager(self, *args, **kwargs):
-        ssl_context = create_urllib3_context(ciphers="DHE-RSA-AES128-GCM-SHA256")
-        kwargs['ssl_context'] = ssl_context
-        return super(CustomCipherAdapter, self).init_poolmanager(*args, **kwargs)
-
-
 # ssh_opts and extra_opts for rsync and rsync_project
 ssh_opts = "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 extra_opts = "-k -q"
@@ -49,6 +40,15 @@ if not os.path.isfile(sds_cfg):
 
 with open(sds_cfg) as f:
     context = yaml.load(f, Loader=yaml.FullLoader)
+
+
+# class for custom cipher for rabbitmq
+class CustomCipherAdapter(HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        ssl_context = create_urllib3_context(ciphers=context.get("CIPHERS"))
+        kwargs['ssl_context'] = ssl_context
+        return super(CustomCipherAdapter, self).init_poolmanager(*args, **kwargs)
+
 
 # define and build groups to reduce redundancy in defining roles
 
@@ -625,9 +625,9 @@ def redis_flush():
     role, hysds_dir, hostname = resolve_role()
     ctx = get_context()
     if role == 'mozart' and ctx['MOZART_REDIS_PASSWORD'] != '':
-        cmd = 'redis-cli -a {MOZART_REDIS_PASSWORD} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx)
+        cmd = 'redis-cli -a {MOZART_REDIS_PASSWORD} --tls --cacert {CA_BUNDLE_CERT} flushall'.format(**ctx)
     elif role == 'metrics' and ctx['METRICS_REDIS_PASSWORD'] != '':
-        cmd = 'redis-cli -a {METRICS_REDIS_PASSWORD} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx)
+        cmd = 'redis-cli -a {METRICS_REDIS_PASSWORD} --tls --cacert {CA_BUNDLE_CERT} flushall'.format(**ctx)
     else:
         cmd = 'redis-cli flushall'.format(**ctx)
     run(cmd)
@@ -636,9 +636,9 @@ def redis_flush():
 def mozart_redis_flush():
     ctx = get_context()
     if ctx['MOZART_REDIS_PASSWORD'] != '':
-        run('redis-cli -a {MOZART_REDIS_PASSWORD} -h {MOZART_REDIS_PVT_IP} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx))
+        run('redis-cli -a {MOZART_REDIS_PASSWORD} -h {MOZART_REDIS_PVT_IP} --tls --cacert {CA_BUNDLE_CERT} flushall'.format(**ctx))
     else:
-        run('redis-cli -h {MOZART_REDIS_PVT_IP} --tls --cacert /etc/pki/tls/certs/ca-bundle.crt flushall'.format(**ctx))
+        run('redis-cli -h {MOZART_REDIS_PVT_IP} --tls --cacert {CA_BUNDLE_CERT} flushall'.format(**ctx))
 
 
 def rabbitmq_queues_flush():
@@ -652,13 +652,13 @@ def rabbitmq_queues_flush():
 
     r = session.get('%s?columns=name' % url,
                      auth=(ctx['MOZART_RABBIT_USER'], ctx['MOZART_RABBIT_PASSWORD']),
-                     verify='/etc/pki/tls/certs/ca-bundle.crt')
+                     verify=ctx['CA_BUNDLE_CERT'])
     r.raise_for_status()
     res = r.json()
     for i in res:
         r = session.delete('%s/%%2f/%s' % (url, i['name']),
                             auth=(ctx['MOZART_RABBIT_USER'], ctx['MOZART_RABBIT_PASSWORD']),
-                            verify='/etc/pki/tls/certs/ca-bundle.crt')
+                            verify=ctx['CA_BUNDLE_CERT'])
         r.raise_for_status()
         logger.debug("Deleted queue %s." % i['name'])
 
