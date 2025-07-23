@@ -15,6 +15,7 @@ from pygments.token import Token
 from sdscli.log_utils import logger
 from sdscli.conf_utils import get_user_files_path, SettingsConf
 from sdscli.prompt_utils import YesNoValidator, set_bar_desc
+from os.path import expanduser
 
 from . import fabfile as fab
 
@@ -645,11 +646,18 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
         bar.update()
 
         # ship netrc
-        netrc = os.path.join(get_user_files_path(), 'netrc')
+        netrc    = os.path.join(get_user_files_path(), 'netrc')
+        netrc_os = os.path.expanduser("~/.netrc-os")
+
         if os.path.exists(netrc):
             set_bar_desc(bar, 'Configuring netrc')
             execute(fab.send_template, 'netrc', '.netrc', roles=[comp])
             execute(fab.chmod, 600, '.netrc', roles=[comp])
+
+        if os.path.exists(netrc_os):
+            set_bar_desc(bar, 'Configuring netrc-os')
+            execute(fab.send_template, '.netrc-os', '.netrc-os', '~/', roles=[comp])
+            execute(fab.chmod, 600, '.netrc-os', roles=[comp])
 
         # ship AWS creds
         set_bar_desc(bar, 'Configuring AWS creds')
@@ -883,6 +891,8 @@ def ship_verdi(conf, encrypt=False, comp='mozart'):
                         'ops', 'ops', roles=[comp])
                 execute(fab.cp_rp_exists, '~/.netrc.verdi',
                         '~/verdi/ops/creds/.netrc', roles=[comp])
+                execute(fab.cp_rp_exists, '~/.netrc-os',
+                        '~/verdi/ops/creds/.netrc-os', roles=[comp])
                 execute(fab.cp_rp_exists, '~/.boto.verdi',
                         '~/verdi/ops/creds/.boto', roles=[comp])
                 execute(fab.cp_rp_exists, '~/.s3cfg.verdi',
@@ -928,7 +938,7 @@ def ship(encrypt, debug=False):
             ship_verdi(conf, encrypt)
 
 
-def import_kibana(comp='metrics'):
+def import_kibana(comp='grq'):
     """"Update metrics component."""
 
     with tqdm(total=4) as bar:  # progress bar
@@ -945,7 +955,7 @@ def import_kibana(comp='metrics'):
         bar.update()
         set_bar_desc(bar, 'copying over dashboards and scripts')
 
-        if fab.metrics_es_engine == "opensearch":
+        if fab.grq_es_engine == "opensearch":
             execute(fab.send_template_user_override, 'import_dashboard.sh.tmpl',
                     '~/metrics/ops/kibana_metrics/import_dashboard.sh',
                     '~/mozart/ops/sdscli/sdscli/adapters/hysds/files/opensearch_dashboards_import',

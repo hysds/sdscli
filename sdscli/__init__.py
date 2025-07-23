@@ -1,3 +1,3 @@
-__version__ = "1.4.0"
-__url__ = "https://github.com/sdskit/sdscli"
+__version__ = "2.0.0"
+__url__ = "https://github.com/hysds/sdscli"
 __description__ = "Command line interface for SDSKit"
