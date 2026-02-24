@@ -290,7 +290,10 @@ def rm(args):
     cont_info = cont_info['_source']
     logger.debug(f"cont_info: {json.dumps(cont_info, indent=2)}")
 
-    rmall(cont_info['url'])  # delete container from code bucket and ES
+    if cont_info['url']:
+        rmall(cont_info['url'])  # delete container from code bucket and ES
+    else:
+        logger.info(f"url is empty so skipping deletion of container from code bucket")
 
     deleted_container = mozart_es.delete_by_id(index=CONTAINERS_INDEX, id=cont_info['id'])
     logger.debug(deleted_container)
