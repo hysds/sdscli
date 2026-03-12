@@ -290,10 +290,22 @@ def rm(args):
     cont_info = cont_info['_source']
     logger.debug(f"cont_info: {json.dumps(cont_info, indent=2)}")
 
-    if cont_info['url']:
+    # Delete all architecture-specific containers if urls field exists
+    if cont_info.get('urls'):
+        try:
+            urls_dict = json.loads(cont_info['urls'])
+            # Get unique URLs (avoid deleting same URL multiple times)
+            unique_urls = set(urls_dict.values())
+            for url in unique_urls:
+                logger.info(f"Deleting container: {url}")
+                rmall(url)  # delete container from code bucket and ES
+        except (json.JSONDecodeError, AttributeError) as e:
+            logger.error(f"Failed to parse urls field: {e}")
+    # Fallback to legacy url field for backward compatibility
+    elif cont_info.get('url'):
         rmall(cont_info['url'])  # delete container from code bucket and ES
     else:
-        logger.info(f"url is empty so skipping deletion of container from code bucket")
+        logger.info(f"No container URLs found, skipping deletion from code bucket")
 
     deleted_container = mozart_es.delete_by_id(index=CONTAINERS_INDEX, id=cont_info['id'])
     logger.debug(deleted_container)
