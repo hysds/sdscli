@@ -61,8 +61,27 @@ def export(args):
 
     validate_dir(export_dir)  # create export directory
 
-    # download container if url provided
-    if cont_info.get('url', None) != None:
+    # download container(s) - handle both multi-arch (urls) and legacy (url)
+    if cont_info.get('urls'):
+        try:
+            urls_dict = json.loads(cont_info['urls'])
+            # Download all unique architecture-specific containers
+            unique_urls = set(urls_dict.values())
+            downloaded_files = {}
+            for url in unique_urls:
+                logger.info(f"Downloading container: {url}")
+                get(url, export_dir)
+                downloaded_files[url] = os.path.basename(url)
+            
+            # Update urls dict with local filenames
+            updated_urls = {}
+            for arch, url in urls_dict.items():
+                updated_urls[arch] = downloaded_files[url]
+            cont_info['urls'] = json.dumps(updated_urls)
+        except (json.JSONDecodeError, AttributeError) as e:
+            logger.error(f"Failed to parse urls field: {e}")
+    elif cont_info.get('url', None) != None:
+        # Legacy single-arch container
         get(cont_info['url'], export_dir)
         cont_info['url'] = os.path.basename(cont_info['url'])
 
@@ -92,18 +111,48 @@ def export(args):
     hysds_ios = []  # pull hysds_ios for each job_spec and download any dependency images
     dep_images = {}
     for job_spec in job_specs:
-        # download dependency images
+        # download dependency images - handle both multi-arch (container_image_urls) and legacy (container_image_url)
         for d in job_spec.get('dependency_images', []):
-            if d['container_image_name'] in dep_images:
-                d['container_image_url'] = dep_images[d['container_image_name']]
+            dep_name = d['container_image_name']
+            if dep_name in dep_images:
+                # Already processed this dependency - reuse cached values
+                cached = dep_images[dep_name]
+                if 'container_image_urls' in cached:
+                    d['container_image_urls'] = cached['container_image_urls']
+                if 'container_image_url' in cached:
+                    d['container_image_url'] = cached['container_image_url']
             else:
-                # download container
-                if args.skip_include_dependency_images:
-                    logger.info(f"Skipping download of dependency image: {d['container_image_url']}.")
-                else:
-                    get(d['container_image_url'], export_dir)
-                d['container_image_url'] = os.path.basename(d['container_image_url'])
-                dep_images[d['container_image_name']] = d['container_image_url']
+                # Handle multi-arch dependency images
+                if d.get('container_image_urls'):
+                    try:
+                        urls_dict = json.loads(d['container_image_urls'])
+                        unique_urls = set(urls_dict.values())
+                        downloaded_files = {}
+                        for url in unique_urls:
+                            if args.skip_include_dependency_images:
+                                logger.info(f"Skipping download of dependency image: {url}")
+                                downloaded_files[url] = os.path.basename(url)
+                            else:
+                                logger.info(f"Downloading dependency image: {url}")
+                                get(url, export_dir)
+                                downloaded_files[url] = os.path.basename(url)
+                        
+                        # Update urls dict with local filenames
+                        updated_urls = {}
+                        for arch, url in urls_dict.items():
+                            updated_urls[arch] = downloaded_files[url]
+                        d['container_image_urls'] = json.dumps(updated_urls)
+                        dep_images[dep_name] = {'container_image_urls': d['container_image_urls']}
+                    except (json.JSONDecodeError, AttributeError) as e:
+                        logger.error(f"Failed to parse container_image_urls field for dependency: {e}")
+                # Handle legacy single-arch dependency images
+                elif d.get('container_image_url'):
+                    if args.skip_include_dependency_images:
+                        logger.info(f"Skipping download of dependency image: {d['container_image_url']}")
+                    else:
+                        get(d['container_image_url'], export_dir)
+                    d['container_image_url'] = os.path.basename(d['container_image_url'])
+                    dep_images[dep_name] = {'container_image_url': d['container_image_url']}
 
         # collect hysds_ios from mozart
         query = {
@@ -220,8 +269,29 @@ def import_pkg(args):
 
     cont_info = manifest['containers']
 
-    # upload container image to s3
-    if cont_info.get('url', None) != None:
+    # upload container image(s) to s3 - handle both multi-arch (urls) and legacy (url)
+    if cont_info.get('urls'):
+        try:
+            urls_dict = json.loads(cont_info['urls'])
+            # Upload all unique architecture-specific containers
+            unique_files = set(urls_dict.values())
+            uploaded_urls = {}
+            for filename in unique_files:
+                cont_image = os.path.join(export_dir, filename)
+                s3_url = "{}/{}".format(code_bucket_url, filename)
+                logger.info(f"Uploading container: {filename} to {s3_url}")
+                put(cont_image, s3_url)
+                uploaded_urls[filename] = s3_url
+            
+            # Update urls dict with S3 URLs
+            updated_urls = {}
+            for arch, filename in urls_dict.items():
+                updated_urls[arch] = uploaded_urls[filename]
+            cont_info['urls'] = json.dumps(updated_urls)
+        except (json.JSONDecodeError, AttributeError) as e:
+            logger.error(f"Failed to parse urls field: {e}")
+    elif cont_info.get('url', None) != None:
+        # Legacy single-arch container
         cont_image = os.path.join(export_dir, cont_info['url'])
         cont_info['url'] = "{}/{}".format(code_bucket_url, cont_info['url'])
         put(cont_image, cont_info['url'])
@@ -233,19 +303,50 @@ def import_pkg(args):
     # index job_specs in ES and upload any dependency containers
     dep_images = {}
     for job_spec in manifest['job_specs']:
-        # download dependency images
+        # upload dependency images - handle both multi-arch (container_image_urls) and legacy (container_image_url)
         for d in job_spec.get('dependency_images', []):
-            if d['container_image_name'] in dep_images:
-                d['container_image_url'] = dep_images[d['container_image_name']]
+            dep_name = d['container_image_name']
+            if dep_name in dep_images:
+                # Already processed this dependency - reuse cached values
+                cached = dep_images[dep_name]
+                if 'container_image_urls' in cached:
+                    d['container_image_urls'] = cached['container_image_urls']
+                if 'container_image_url' in cached:
+                    d['container_image_url'] = cached['container_image_url']
             else:
-                # upload container
-                dep_img = os.path.join(export_dir, d['container_image_url'])
-                d['container_image_url'] = "{}/{}".format(code_bucket_url, d['container_image_url'])
-                if args.skip_include_dependency_images:
-                    logger.info(f"Skipping upload of dependency image: {dep_img}.")
-                else:
-                    put(dep_img, d['container_image_url'])
-                dep_images[d['container_image_name']] = d['container_image_url']
+                # Handle multi-arch dependency images
+                if d.get('container_image_urls'):
+                    try:
+                        urls_dict = json.loads(d['container_image_urls'])
+                        unique_files = set(urls_dict.values())
+                        uploaded_urls = {}
+                        for filename in unique_files:
+                            dep_img = os.path.join(export_dir, filename)
+                            s3_url = "{}/{}".format(code_bucket_url, filename)
+                            if args.skip_include_dependency_images:
+                                logger.info(f"Skipping upload of dependency image: {dep_img}")
+                            else:
+                                logger.info(f"Uploading dependency image: {filename} to {s3_url}")
+                                put(dep_img, s3_url)
+                            uploaded_urls[filename] = s3_url
+                        
+                        # Update urls dict with S3 URLs
+                        updated_urls = {}
+                        for arch, filename in urls_dict.items():
+                            updated_urls[arch] = uploaded_urls[filename]
+                        d['container_image_urls'] = json.dumps(updated_urls)
+                        dep_images[dep_name] = {'container_image_urls': d['container_image_urls']}
+                    except (json.JSONDecodeError, AttributeError) as e:
+                        logger.error(f"Failed to parse container_image_urls field for dependency: {e}")
+                # Handle legacy single-arch dependency images
+                elif d.get('container_image_url'):
+                    dep_img = os.path.join(export_dir, d['container_image_url'])
+                    d['container_image_url'] = "{}/{}".format(code_bucket_url, d['container_image_url'])
+                    if args.skip_include_dependency_images:
+                        logger.info(f"Skipping upload of dependency image: {dep_img}")
+                    else:
+                        put(dep_img, d['container_image_url'])
+                    dep_images[dep_name] = {'container_image_url': d['container_image_url']}
 
         indexed_job_spec = mozart_es.index_document(index=JOB_SPECS_INDEX, body=job_spec, id=job_spec['id'])
         logger.debug(indexed_job_spec)
