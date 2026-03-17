@@ -798,7 +798,7 @@ def python_setup_develop(node_type, dest):
 ##########################
 
 
-def get_ci_job_info(repo, branch=None):
+def get_ci_job_info(repo, branch=None, pipeline=False):
     ctx = get_context()
     match = repo_re.search(repo)
     if not match:
@@ -806,17 +806,17 @@ def get_ci_job_info(repo, branch=None):
     owner, name = match.groups()
     if branch is None:
         job_name = "{}_container-builder_{}_{}".format(ctx['VENUE'], owner, name)
-        config_tmpl = 'config.xml'
+        config_tmpl = 'config-pipeline.xml' if pipeline else 'config.xml'
     else:
         job_name = "{}_container-builder_{}_{}_{}".format(
             ctx['VENUE'], owner, name, branch)
-        config_tmpl = 'config-branch.xml'
+        config_tmpl = 'config-pipeline.xml' if pipeline else 'config-branch.xml'
     return job_name, config_tmpl
 
 
-def add_ci_job(repo, proto, branch=None, release=False):
+def add_ci_job(repo, proto, branch=None, release=False, pipeline=False):
     with settings(sudo_user=context["JENKINS_USER"]):
-        job_name, config_tmpl = get_ci_job_info(repo, branch)
+        job_name, config_tmpl = get_ci_job_info(repo, branch, pipeline=pipeline)
         ctx = get_context()
         ctx['PROJECT_URL'] = repo
         ctx['BRANCH'] = branch
@@ -828,6 +828,8 @@ def add_ci_job(repo, proto, branch=None, release=False):
             ctx['BRANCH_SPEC'] = "origin/tags/release-*"
         else:
             ctx['BRANCH_SPEC'] = "**"
+        if pipeline:
+            ctx['JENKINSFILE_PATH'] = 'Jenkinsfile'
         if proto in ('s3', 's3s'):
             ctx['STORAGE_URL'] = "{}://{}/{}/".format(
                 proto, ctx['S3_ENDPOINT'], ctx['CODE_BUCKET'])

@@ -63,8 +63,9 @@ def add_job(args):
     if args.branch is None:
         execute(fab.add_ci_job_release, repo_url, args.storage, roles=['ci'])
     else:
+        pipeline = getattr(args, 'pipeline', False)
         execute(fab.add_ci_job, repo_url, args.storage,
-                args.branch, roles=['ci'])
+                args.branch, pipeline=pipeline, roles=['ci'])
 
     # reload
     execute(fab.reload_configuration, roles=['ci'])

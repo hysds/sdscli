@@ -363,6 +363,8 @@ def main():
                                    help="register git branch instead of release")
     parser_ci_add_job.add_argument(
         '--token', '-k', action='store_true', help="use configured OAuth token")
+    parser_ci_add_job.add_argument(
+        '--pipeline', '-p', action='store_true', help="import as Jenkins pipeline job")
     parser_ci_remove_job = parser_ci_subparsers.add_parser(
         'remove_job', help="remove Jenkins job")
     parser_ci_remove_job.add_argument('repo', help='git repository url')
