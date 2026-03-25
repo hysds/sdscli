@@ -3,15 +3,13 @@ Configuration for HySDS cluster.
 """
 
 
-from future import standard_library
-standard_library.install_aliases()
 import os
 import yaml
 import pwd
 import shutil
 import hashlib
 import traceback
-from pkg_resources import resource_filename
+from importlib.resources import files
 from glob import glob
 
 from prompt_toolkit.shortcuts import prompt, print_tokens
@@ -307,8 +305,7 @@ def copy_files():
     files_path = get_user_files_path()
     logger.debug('files_path: %s' % files_path)
     validate_dir(files_path, mode=0o700)
-    sds_files_path = resource_filename(
-        'sdscli', os.path.join('adapters', 'hysds', 'files'))
+    sds_files_path = str(files('sdscli').joinpath('adapters', 'hysds', 'files'))
     sds_files = glob(os.path.join(sds_files_path, '*'))
     for sds_file in sds_files:
         if os.path.basename(sds_file) == 'cluster.py':
