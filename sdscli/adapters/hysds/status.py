@@ -144,11 +144,11 @@ def print_tps_status(conf, comp, debug=False):
         # print_rabbitmq_status(conf.get('MOZART_RABBIT_USER'),
         #                      conf.get('MOZART_RABBIT_PASSWORD'),
         #                      conf.get('MOZART_RABBIT_PVT_IP'))
-        ret = execute(fab.systemctl, 'status', 'rabbitmq-server', roles=[comp])
+        ret = execute(fab.systemctl, 'status', 'rabbitmq-server', use_sudo=False, roles=[comp])
         print_service_status('rabbitmq-server', ret, debug)
         # print_redis_status(conf.get('MOZART_REDIS_PASSWORD'),
         #                   conf.get('MOZART_REDIS_PVT_IP'))
-        ret = execute(fab.systemctl, 'status', 'redis', roles=[comp])
+        ret = execute(fab.systemctl, 'status', 'redis', use_sudo=False, roles=[comp])
         print_service_status('redis', ret, debug)
         print_es_status(conf.get('MOZART_ES_PVT_IP'), comp)
         # ret = execute(fab.systemctl, 'status', 'elasticsearch', roles=[comp])
@@ -157,7 +157,7 @@ def print_tps_status(conf, comp, debug=False):
         print_tps_header(comp)
         # print_redis_status(conf.get('METRICS_REDIS_PASSWORD'),
         #                   conf.get('METRICS_REDIS_PVT_IP'))
-        ret = execute(fab.systemctl, 'status', 'redis', roles=[comp])
+        ret = execute(fab.systemctl, 'status', 'redis', use_sudo=False, roles=[comp])
         print_service_status('redis', ret, debug)
         print_es_status(conf.get('METRICS_ES_PVT_IP'), comp)
         # ret = execute(fab.systemctl, 'status', 'elasticsearch', roles=[comp])
@@ -170,7 +170,7 @@ def print_tps_status(conf, comp, debug=False):
     elif comp == 'ci':
         print_tps_header(comp)
         # print_http_status("Jenkins", "http://{}:8080".format(conf.get('CI_PVT_IP')))
-        ret = execute(fab.systemctl, 'status', 'jenkins', roles=[comp])
+        ret = execute(fab.systemctl, 'status', 'jenkins', use_sudo=False, roles=[comp])
         print_service_status('jenkins', ret, debug)
 
 
