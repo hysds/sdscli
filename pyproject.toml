@@ -24,7 +24,8 @@ classifiers = [
 
 dependencies = [
     # HySDS sibling packages (per HC-612 section 4.1)
-    "hysds-core>=7.0,<8.0",
+    # Using >=7.0a0 to accept pre-releases (RC, alpha, beta)
+    "hysds-core>=7.0a0,<8.0",
     
     # Core dependencies - matching original setup.py order and pins exactly
     "PyYAML>=5.1",
