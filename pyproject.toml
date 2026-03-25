@@ -23,6 +23,9 @@ classifiers = [
 ]
 
 dependencies = [
+    # HySDS sibling packages (per HC-612 section 4.1)
+    "hysds-core>=7.0,<8.0",
+    
     # Core dependencies - matching original setup.py order and pins exactly
     "PyYAML>=5.1",
     "Pygments>=2.4.0",
@@ -33,7 +36,7 @@ dependencies = [
     "kombu>=4.5.0",
     "redis>=3.2.1",
     "elasticsearch>=7.0.0,<7.14.0",
-    "elasticsearch-dsl>=7.0.0,<=7.4.0",
+    "elasticsearch-dsl>=7.0.0,<7.4.0",
     "awscli>=1.17.1",
     "boto3>=1.11.1",
     "fab-classic>=1.19.2",
