@@ -212,19 +212,35 @@ def get_package_script_path(package_name, script_relative_path):
     base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
     base = base_map.get(package_name, 'mozart')
     
+    logger.debug(f'[get_package_script_path] Called with package={package_name}, script={script_relative_path}')
+    
     # Try PyPI location first by checking on remote host
-    with hide('running', 'stdout', 'stderr', 'warnings'):
-        pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{script_relative_path}\'))"'
-        pypi_path_result = run(pypi_path_cmd, warn_only=True, quiet=True)
-        if pypi_path_result.succeeded:
-            pypi_path = pypi_path_result.strip()
-            # Check if file exists at PyPI location on remote host
-            check_result = run(f'test -f {pypi_path}', warn_only=True, quiet=True)
-            if check_result.succeeded:
-                return pypi_path
+    pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{script_relative_path}\'))"'
+    logger.debug(f'[get_package_script_path] Running on remote: {pypi_path_cmd}')
+    pypi_path_result = run(pypi_path_cmd, warn_only=True)
+    logger.debug(f'[get_package_script_path] Result succeeded={pypi_path_result.succeeded}, return_code={pypi_path_result.return_code}')
+    
+    if pypi_path_result.succeeded:
+        pypi_path = pypi_path_result.strip()
+        logger.debug(f'[get_package_script_path] PyPI path from remote: {pypi_path}')
+        
+        # Check if file exists at PyPI location on remote host
+        logger.debug(f'[get_package_script_path] Checking if file exists: test -f {pypi_path}')
+        check_result = run(f'test -f {pypi_path}', warn_only=True)
+        logger.debug(f'[get_package_script_path] File exists check succeeded={check_result.succeeded}')
+        
+        if check_result.succeeded:
+            logger.debug(f'[get_package_script_path] Returning PyPI path: {pypi_path}')
+            return pypi_path
+        else:
+            logger.debug(f'[get_package_script_path] File not found at PyPI location: {pypi_path}')
+    else:
+        logger.debug(f'[get_package_script_path] Failed to get PyPI path from remote')
     
     # Fallback to editable install location
-    return os.path.join(ops_dir, f'{base}/ops/{package_name}/{script_relative_path}')
+    fallback_path = os.path.join(ops_dir, f'{base}/ops/{package_name}/{script_relative_path}')
+    logger.debug(f'[get_package_script_path] Returning fallback path: {fallback_path}')
+    return fallback_path
 
 
 def resolve_files_dir(fname, files_dir):
