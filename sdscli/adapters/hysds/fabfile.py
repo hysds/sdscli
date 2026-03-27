@@ -160,6 +160,18 @@ def get_context(node_type=None):
     return ctx
 
 
+def is_pypi_install():
+    """Check if this is a PyPI-based installation vs editable install.
+    
+    Returns True if hysds is installed in site-packages (PyPI install),
+    False if using editable install from ~/mozart/ops/.
+    """
+    import sysconfig
+    
+    site_packages = sysconfig.get_path('purelib')
+    return os.path.exists(os.path.join(site_packages, 'hysds'))
+
+
 def get_package_config_dir(package_name, config_subdir):
     """Get config directory from installed package or editable install.
     
@@ -294,7 +306,7 @@ def send_template_user_override(tmpl, dest, tmpl_dir=None, node_type=None):
     If template exists in the user files (i.e. ~/.sds/files), that template will be used.
     :param tmpl: template file name
     :param dest: output file name
-    :param tmpl_dir: nominal directory containing the template
+    :param tmpl_dir: nominal directory containing the template (supports package-relative paths)
     :param node_type: node type/role
     :return: None
     """
@@ -302,6 +314,17 @@ def send_template_user_override(tmpl, dest, tmpl_dir=None, node_type=None):
         tmpl_dir = get_user_files_path()
     else:
         tmpl_dir = os.path.expanduser(tmpl_dir)
+        # Handle package-relative paths for PyPI compatibility
+        # e.g., '~/mozart/ops/hysds/configs/supervisor' -> get_package_config_dir('hysds', 'configs/supervisor')
+        if '/ops/hysds/configs/' in tmpl_dir:
+            config_subdir = tmpl_dir.split('/ops/hysds/configs/')[-1]
+            tmpl_dir = get_package_config_dir('hysds', f'configs/{config_subdir}')
+        elif '/ops/hysds_ui/src/config' in tmpl_dir:
+            tmpl_dir = get_package_config_dir('hysds_ui', 'src/config')
+        elif '/ops/grq2/config' in tmpl_dir:
+            tmpl_dir = get_package_config_dir('grq2', 'config')
+        elif '/ops/mozart/settings' in tmpl_dir:
+            tmpl_dir = get_package_config_dir('mozart', 'settings')
     upload_template(tmpl, dest, use_jinja=True, context=get_context(node_type),
                     template_dir=resolve_files_dir(tmpl, tmpl_dir))
 
@@ -313,6 +336,15 @@ def send_template_user_override(tmpl, dest, tmpl_dir=None, node_type=None):
 
 
 def rsync_code(node_type, dir_path=None):
+    """Rsync code to remote nodes (editable install only).
+    
+    For PyPI installations, this is a no-op since packages are already installed.
+    """
+    if is_pypi_install():
+        logger.info("Skipping rsync_code - using PyPI-installed packages")
+        return
+    
+    # Legacy editable install - perform rsync
     if dir_path is None:
         dir_path = node_type
     rm_rf('%s/ops/osaka' % dir_path)
@@ -804,6 +836,15 @@ def pip_install_with_req(node_type, dest):
 
 
 def pip_install_with_req(node_type, dest, ndeps):
+    """Install package from local directory (editable install only).
+    
+    For PyPI installations, this is a no-op since packages are already installed.
+    """
+    if is_pypi_install():
+        logger.info(f"Skipping pip install from {dest} - using PyPI-installed packages")
+        return
+    
+    # Legacy editable install
     with prefix('source ~/%s/bin/activate' % node_type):
         with cd(dest):
             if ndeps:

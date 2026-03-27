@@ -208,7 +208,7 @@ def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
         set_bar_desc(bar, 'Syncing packages')
         execute(fab.rm_rf, '~/verdi/ops/*', roles=[comp])
         execute(fab.rsync_code, 'verdi', roles=[comp])
-        execute(fab.set_spyddder_settings, roles=[comp])
+        # execute(fab.set_spyddder_settings, roles=[comp])  # Deprecated - spyddder-man not in PyPI deployments
         bar.update()
 
         # update reqs
@@ -574,7 +574,7 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
             set_bar_desc(bar, 'Syncing packages')
             execute(fab.rm_rf, '~/verdi/ops/*', roles=[comp])
             execute(fab.rsync_code, 'factotum', 'verdi', roles=[comp])
-            execute(fab.set_spyddder_settings, roles=[comp])
+            # execute(fab.set_spyddder_settings, roles=[comp])  # Deprecated - spyddder-man not in PyPI deployments
             bar.update()
 
             # update reqs
@@ -687,7 +687,7 @@ def update_verdi(conf, ndeps=False, config_only=False, comp='verdi'):
             set_bar_desc(bar, 'Syncing packages')
             execute(fab.rm_rf, '~/verdi/ops/*', roles=[comp])
             execute(fab.rsync_code, 'verdi', roles=[comp])
-            execute(fab.set_spyddder_settings, roles=[comp])
+            # execute(fab.set_spyddder_settings, roles=[comp])  # Deprecated - spyddder-man not in PyPI deployments
             bar.update()
 
             # update reqs
