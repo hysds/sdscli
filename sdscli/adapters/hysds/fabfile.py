@@ -1050,21 +1050,31 @@ def send_celeryconf(node_type):
         tmpl_asg = 'celeryconfig.py.tmpl.asg'
         if os.path.exists(os.path.join(user_path, tmpl_asg)):
             tmpl = tmpl_asg
-    dest_file = '~/%s/ops/hysds/celeryconfig.py' % base_dir
+    
+    # Always write to etc/ directory (runtime location) for both PyPI and editable installs
+    dest_file = '~/%s/etc/celeryconfig.py' % base_dir
+    run('mkdir -p ~/%s/etc' % base_dir)
     upload_template(tmpl, dest_file, use_jinja=True, context=ctx,
                     template_dir=resolve_files_dir(tmpl, template_dir))
 
 
 def send_mozartconf():
-    dest_file = '~/mozart/ops/mozart/settings.cfg'
+    # Write to etc/ directory for both PyPI and editable installs
+    dest_file = '~/mozart/etc/settings.cfg'
+    run('mkdir -p ~/mozart/etc')
     template_dir = get_package_config_dir('mozart', 'settings')
     upload_template('settings.cfg.tmpl', dest_file, use_jinja=True, context=get_context('mozart'),
                     template_dir=resolve_files_dir('settings.cfg.tmpl', template_dir))
+    
+    # Create data directory and initialize database
     with prefix('source ~/mozart/bin/activate'):
-        with cd('~/mozart/ops/mozart'):
-            mkdir('~/mozart/ops/mozart/data',
-                  context['OPS_USER'], context['OPS_USER'])
-            run('./db_create.py')
+        mkdir('~/mozart/data', context['OPS_USER'], context['OPS_USER'])
+        # TODO: Convert db_create.py to console script in Phase 2
+        if is_pypi_install():
+            run('python -m mozart.db_create')
+        else:
+            with cd('~/mozart/ops/mozart'):
+                run('./db_create.py')
 
 
 def send_hysds_ui_conf():
@@ -1101,22 +1111,27 @@ def send_hysds_ui_conf():
 
 
 def send_grq2conf():
+    # Write to etc/ directory for both PyPI and editable installs
     grq2_config_dir = get_package_config_dir('grq2', 'config')
-    dest_file = '~/sciflo/ops/grq2/settings.cfg'
+    dest_file = '~/sciflo/etc/grq2_settings.cfg'
+    run('mkdir -p ~/sciflo/etc')
     upload_template('settings.cfg.tmpl', dest_file, use_jinja=True, context=get_context('grq'),
                     template_dir=resolve_files_dir('settings.cfg.tmpl', grq2_config_dir))
 
 
 def send_peleconf(send_file='settings.cfg.tmpl', template_dir=get_user_files_path()):
+    # Write to etc/ directory for both PyPI and editable installs
     tmpl_dir = os.path.expanduser(template_dir)
-    dest_file = '~/sciflo/ops/pele/settings.cfg'
+    dest_file = '~/sciflo/etc/pele_settings.cfg'
+    run('mkdir -p ~/sciflo/etc')
     upload_template(send_file, dest_file, use_jinja=True, context=get_context('grq'),
                     template_dir=tmpl_dir)
+    
+    # Run flask commands - works for both PyPI and editable installs since flask finds the app
     with prefix('source ~/sciflo/bin/activate'):
-        with cd('~/sciflo/ops/pele'):
-            run('flask create-db')
-            run('flask db init', warn_only=True)
-            run('flask db migrate', warn_only=True)
+        run('flask --app pele create-db')
+        run('flask --app pele db init', warn_only=True)
+        run('flask --app pele db migrate', warn_only=True)
 
 
 def build_hysds_ui():
