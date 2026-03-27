@@ -197,6 +197,30 @@ def get_package_config_dir(package_name, config_subdir):
     return editable_dir
 
 
+def get_package_script_path(package_name, script_relative_path):
+    """Get full path to a package script file.
+    
+    For PyPI installs: Returns path in share/package/scripts/
+    For editable installs: Returns path in ops/package/scripts/
+    
+    :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
+    :param script_relative_path: Relative path to script (e.g., 'scripts/install_base_es_template.sh')
+    :return: Full path to script
+    """
+    import sysconfig
+    
+    if is_pypi_install():
+        # For PyPI installs, scripts are in shared-data
+        share_dir = os.path.join(sysconfig.get_path('data'), 'share', package_name, script_relative_path)
+        if os.path.exists(share_dir):
+            return share_dir
+    
+    # Editable install fallback
+    base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
+    base = base_map.get(package_name, 'mozart')
+    return os.path.join(ops_dir, f'{base}/ops/{package_name}/{script_relative_path}')
+
+
 def resolve_files_dir(fname, files_dir):
     """Resolve file or template from user SDS files or default location."""
 
@@ -548,8 +572,9 @@ def install_pkg_es_templates():
     role, hysds_dir, hostname = resolve_role()
     if role not in ('grq', 'mozart'):
         raise RuntimeError("Invalid fabric function for %s." % role)
+    script_path = get_package_script_path('mozart', 'scripts/install_es_template.sh')
     with prefix('source %s/bin/activate' % hysds_dir):
-        run('%s/ops/mozart/scripts/install_es_template.sh' % (hysds_dir))
+        run(script_path)
 
 
 def install_base_es_template():
@@ -562,8 +587,9 @@ def install_base_es_template():
     dir = role
     if role == "grq":
         dir = "grq2"
+    script_path = get_package_script_path(dir, 'scripts/install_base_es_template.sh')
     with prefix('source %s/bin/activate' % hysds_dir):
-        run(f'{hysds_dir}/ops/{dir}/scripts/install_base_es_template.sh /tmp/es_template-base.json')
+        run(f'{script_path} /tmp/es_template-base.json')
 
 
 def install_es_policy():
@@ -573,15 +599,15 @@ def install_es_policy():
         ism_target_file = f"{ops_dir}/mozart/etc/{ism_policy_file_name}"
         send_template(ism_policy_file_name, ism_target_file)
 
-        with cd('~/mozart/ops/hysds/scripts'):
-            run(f"python install_ilm_policy.py --ism-policy {ism_target_file}")
+        script_path = get_package_script_path('hysds', 'scripts/install_ilm_policy.py')
+        run(f"python {script_path} --ism-policy {ism_target_file}")
     else:
         ilm_policy_file_name = "es_ilm_policy_mozart.json"
         ilm_target_file = f"{ops_dir}/mozart/etc/{ilm_policy_file_name}"
         send_template(ilm_policy_file_name, ilm_target_file)
 
-        with cd('~/mozart/ops/hysds/scripts'):
-            run(f"python install_ilm_policy.py --ilm-policy {ilm_target_file}")
+        script_path = get_package_script_path('hysds', 'scripts/install_ilm_policy.py')
+        run(f"python {script_path} --ilm-policy {ilm_target_file}")
 
 
 def install_mozart_es_templates():
@@ -606,8 +632,8 @@ def install_mozart_es_templates():
         print(f"Creating ES index template for {template}")
         # run(f"curl -XPUT 'localhost:9200/_index_template/{template_doc_name}?pretty' "
         #     f"-H 'Content-Type: application/json' -d@{target_path}")
-        with cd('~/mozart/ops/hysds/scripts'):
-            run(f"python install_job_status_template.py {template_doc_name} {target_path}")
+        script_path = get_package_script_path('hysds', 'scripts/install_job_status_template.py')
+        run(f"python {script_path} {template_doc_name} {target_path}")
 
 
 ##########################
@@ -635,30 +661,32 @@ def grqd_stop():
 
 
 def install_es_template():
+    script_path = get_package_script_path('grq2', 'scripts/install_es_template.sh')
     with prefix('source sciflo/bin/activate'):
-        run('sciflo/ops/grq2/scripts/install_es_template.sh')
+        run(script_path)
 
 
 def clean_hysds_ios():
+    script_path = get_package_script_path('grq2', 'scripts/clean_hysds_ios_indexes.sh')
     with prefix('source sciflo/bin/activate'):
-        run('sciflo/ops/grq2/scripts/clean_hysds_ios_indexes.sh https://localhost:9200')
+        run(f'{script_path} https://localhost:9200')
 
 
 def create_grq_user_rules_index():
+    script_path = get_package_script_path('grq2', 'scripts/create_user_rules_index.py')
     with prefix('source ~/sciflo/bin/activate'):
-        with cd('~/sciflo/ops/grq2/scripts'):
-            run('./create_user_rules_index.py')
+        run(f'python {script_path}')
 
 
 def create_hysds_ios_grq_index():
+    script_path = get_package_script_path('grq2', 'scripts/create_hysds_ios_index.py')
     with prefix('source ~/sciflo/bin/activate'):
-        with cd('~/sciflo/ops/grq2/scripts'):
-            run('./create_hysds_ios_index.py')
+        run(f'python {script_path}')
 
 
 def install_ingest_pipeline():
-    with cd('~/sciflo/ops/grq2/scripts'):
-        run('python install_ingest_pipeline.py')
+    script_path = get_package_script_path('grq2', 'scripts/install_ingest_pipeline.py')
+    run(f'python {script_path}')
 
 
 ##########################
@@ -725,11 +753,12 @@ def rabbitmq_queues_flush():
 
 def mozart_es_flush():
     ctx = get_context()
+    script_path = get_package_script_path('hysds', 'scripts/clean_indices_from_alias.py')
     # run('curl -XDELETE http://{MOZART_ES_PVT_IP}:9200/_index_template/*_status'.format(**ctx))
-    run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py job_status-current'.format(**ctx))
-    run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py task_status-current'.format(**ctx))
-    run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py event_status-current'.format(**ctx))
-    run('~/mozart/ops/hysds/scripts/clean_indices_from_alias.py worker_status-current'.format(**ctx))
+    run(f'python {script_path} job_status-current')
+    run(f'python {script_path} task_status-current')
+    run(f'python {script_path} event_status-current')
+    run(f'python {script_path} worker_status-current')
     # run('~/mozart/ops/hysds/scripts/clean_job_spec_container_indexes.sh http://{MOZART_ES_PVT_IP}:9200'.format(**ctx))
 
 
@@ -1140,15 +1169,15 @@ def build_hysds_ui():
 
 
 def create_user_rules_index():
+    script_path = get_package_script_path('mozart', 'scripts/create_user_rules_index.py')
     with prefix('source ~/mozart/bin/activate'):
-        with cd('~/mozart/ops/mozart/scripts'):
-            run('./create_user_rules_index.py')
+        run(f'python {script_path}')
 
 
 def create_hysds_ios_index():
+    script_path = get_package_script_path('mozart', 'scripts/create_hysds_ios_index.py')
     with prefix('source ~/mozart/bin/activate'):
-        with cd('~/mozart/ops/mozart/scripts'):
-            run('./create_hysds_ios_index.py')
+        run(f'python {script_path}')
 
 
 def send_hysds_scripts(node_type):
