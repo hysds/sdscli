@@ -26,13 +26,6 @@ from sdscli.prompt_utils import YesNoValidator, set_bar_desc
 from . import fabfile as fab
 
 
-prompt_style = Style.from_dict({
-    Token.Alert: 'bg:#D8060C',
-    Token.Username: '#D8060C',
-    Token.Param: '#3CFF33',
-})
-
-
 def start_mozart(conf, comp='mozart'):
     """"Start TPS on mozart component."""
 
@@ -143,7 +136,7 @@ def start(comp, debug=False, force=False):
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
                                                     f"Starting TPS on component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
-                      validator=YesNoValidator(), style=prompt_style) == 'y'
+                      validator=YesNoValidator()) == 'y'
         if not cont:
             return 0
 

@@ -26,13 +26,6 @@ from sdscli.prompt_utils import YesNoValidator, set_bar_desc
 from . import fabfile as fab
 
 
-prompt_style = Style.from_dict({
-    Token.Alert: 'bg:#D8060C',
-    Token.Username: '#D8060C',
-    Token.Param: '#3CFF33',
-})
-
-
 def stop_mozart(conf, comp='mozart'):
     """"Stop mozart component."""
 

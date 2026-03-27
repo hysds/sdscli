@@ -36,13 +36,6 @@ from hysds.es_util import get_mozart_es, get_metrics_es, get_grq_es
 from hysds.es_util import get_mozart_es_engine, get_metrics_es_engine, get_grq_es_engine
 
 
-prompt_style = Style.from_dict({
-    Token.Alert: 'bg:#D8060C',
-    Token.Username: '#D8060C',
-    Token.Param: '#3CFF33',
-})
-
-
 def print_rabbitmq_status(user, password, host):
     """Print status of RabbitMQ server."""
 

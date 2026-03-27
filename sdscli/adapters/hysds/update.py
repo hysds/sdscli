@@ -20,13 +20,6 @@ from os.path import expanduser
 from . import fabfile as fab
 
 
-prompt_style = Style.from_dict({
-    Token.Alert: 'bg:#D8060C',
-    Token.Username: '#D8060C',
-    Token.Param: '#3CFF33',
-})
-
-
 def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
     """"Update mozart component."""
 

@@ -22,13 +22,6 @@ from future import standard_library
 standard_library.install_aliases()
 
 
-prompt_style = Style.from_dict({
-    Token.Alert: 'bg:#D8060C',
-    Token.Username: '#D8060C',
-    Token.Param: '#3CFF33',
-})
-
-
 def init_mozart(conf, comp='mozart'):
     """"Initialize mozart component."""
 
@@ -271,7 +264,7 @@ def init(comp, debug=False, force=False):
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
                                                     f"Initializing component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
-                      validator=YesNoValidator(), style=prompt_style) == 'y'
+                      validator=YesNoValidator()) == 'y'
         if not cont:
             return 0
 
@@ -313,7 +306,7 @@ def start(comp, release, debug=False, force=False):
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
                                                     f"Starting component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
-                      validator=YesNoValidator(), style=prompt_style) == 'y'
+                      validator=YesNoValidator()) == 'y'
         if not cont:
             return 0
 
@@ -351,7 +344,7 @@ def stop(comp, debug=False, force=False):
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
                                                     f"Stopping component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
-                      validator=YesNoValidator(), style=prompt_style) == 'y'
+                      validator=YesNoValidator()) == 'y'
         if not cont:
             return 0
 

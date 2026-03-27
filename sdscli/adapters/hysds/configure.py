@@ -23,13 +23,6 @@ from sdscli.os_utils import validate_dir
 from sdscli.prompt_utils import YesNoValidator
 
 
-prompt_style = Style.from_dict({
-    Token.Alert: 'bg:#D8060C',
-    Token.Username: '#D8060C',
-    Token.Param: '#3CFF33',
-})
-
-
 CFG_TMPL = """# HySDS config
 TYPE: hysds
 
@@ -337,8 +330,8 @@ def configure():
                                                    (Token.Alert,
                                                     "Customizations will be lost or overwritten!"),
                                                    (Token, " Continue [y/n]: ")],
-                      validator=YesNoValidator(), style=prompt_style) == 'y'
-        # validator=YesNoValidator(), default='n', style=prompt_style) == 'y'
+                      validator=YesNoValidator()) == 'y'
+        # validator=YesNoValidator(), default='n') == 'y'
         if not cont:
             return 0
         with open(cfg_file) as f:
