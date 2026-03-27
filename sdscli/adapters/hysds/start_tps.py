@@ -14,7 +14,7 @@ from fabric.api import execute, hide
 from tqdm import tqdm
 
 from prompt_toolkit.shortcuts import prompt
-from prompt_toolkit.styles import style_from_dict
+from prompt_toolkit.styles import Style
 from prompt_toolkit.validation import Validator, ValidationError
 from pygments.token import Token
 
@@ -26,7 +26,7 @@ from sdscli.prompt_utils import YesNoValidator, set_bar_desc
 from . import fabfile as fab
 
 
-prompt_style = style_from_dict({
+prompt_style = Style.from_dict({
     Token.Alert: 'bg:#D8060C',
     Token.Username: '#D8060C',
     Token.Param: '#3CFF33',

@@ -16,7 +16,7 @@ from fabric.api import execute, hide
 from tqdm import tqdm
 
 from prompt_toolkit.shortcuts import prompt
-from prompt_toolkit.styles import style_from_dict
+from prompt_toolkit.styles import Style
 from prompt_toolkit.validation import Validator, ValidationError
 from pygments.token import Token
 
@@ -36,7 +36,7 @@ from hysds.es_util import get_mozart_es, get_metrics_es, get_grq_es
 from hysds.es_util import get_mozart_es_engine, get_metrics_es_engine, get_grq_es_engine
 
 
-prompt_style = style_from_dict({
+prompt_style = Style.from_dict({
     Token.Alert: 'bg:#D8060C',
     Token.Username: '#D8060C',
     Token.Param: '#3CFF33',
