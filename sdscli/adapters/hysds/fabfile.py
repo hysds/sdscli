@@ -198,26 +198,32 @@ def get_package_config_dir(package_name, config_subdir):
 
 
 def get_package_script_path(package_name, script_relative_path):
-    """Get full path to a package script file.
+    """Get full path to a package script file on remote host.
     
     For PyPI installs: Returns path in share/package/scripts/
     For editable installs: Returns path in ops/package/scripts/
     
+    This function checks the REMOTE host to determine the correct path.
+    
     :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
     :param script_relative_path: Relative path to script (e.g., 'scripts/install_base_es_template.sh')
-    :return: Full path to script
+    :return: Full path to script on remote host
     """
-    import sysconfig
-    
-    if is_pypi_install():
-        # For PyPI installs, scripts are in shared-data
-        share_dir = os.path.join(sysconfig.get_path('data'), 'share', package_name, script_relative_path)
-        if os.path.exists(share_dir):
-            return share_dir
-    
-    # Editable install fallback
     base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
     base = base_map.get(package_name, 'mozart')
+    
+    # Try PyPI location first by checking on remote host
+    with hide('running', 'stdout', 'stderr', 'warnings'):
+        pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{script_relative_path}\'))"'
+        pypi_path_result = run(pypi_path_cmd, warn_only=True, quiet=True)
+        if pypi_path_result.succeeded:
+            pypi_path = pypi_path_result.strip()
+            # Check if file exists at PyPI location on remote host
+            check_result = run(f'test -f {pypi_path}', warn_only=True, quiet=True)
+            if check_result.succeeded:
+                return pypi_path
+    
+    # Fallback to editable install location
     return os.path.join(ops_dir, f'{base}/ops/{package_name}/{script_relative_path}')
 
 
