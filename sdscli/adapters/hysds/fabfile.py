@@ -160,6 +160,31 @@ def get_context(node_type=None):
     return ctx
 
 
+def get_package_config_dir(package_name, config_subdir):
+    """Get config directory from installed package or editable install.
+    
+    Priority:
+    1. Installed package shared-data location (PyPI install)
+    2. Editable install location (development)
+    """
+    import sys
+    import sysconfig
+    
+    # Try shared-data location first (standard for PyPI packages)
+    share_dir = os.path.join(sysconfig.get_path('data'), 'share', package_name, config_subdir)
+    if os.path.exists(share_dir):
+        return share_dir
+    
+    # Fallback to editable install location
+    editable_dir = os.path.join(ops_dir, 'mozart/ops', package_name, config_subdir)
+    if os.path.exists(editable_dir):
+        return editable_dir
+    
+    # Last resort: return the editable path even if it doesn't exist
+    # (will fail later with a clear error message)
+    return editable_dir
+
+
 def resolve_files_dir(fname, files_dir):
     """Resolve file or template from user SDS files or default location."""
 
@@ -892,11 +917,12 @@ def send_shipper_conf(node_type, log_dir, cluster_jobs, redis_ip_job_status,
     ctx = get_context(node_type)
     ctx.update({'cluster_jobs': cluster_jobs,
                 'cluster_metrics': cluster_metrics})
+    logstash_template_dir = get_package_config_dir('hysds', 'configs/logstash')
     if node_type == 'mozart':
         upload_template('indexer.conf.mozart', '~/mozart/etc/indexer.conf', use_jinja=True, context=ctx,
-                        template_dir=os.path.join(ops_dir, 'mozart/ops/hysds/configs/logstash'))
+                        template_dir=resolve_files_dir('indexer.conf.mozart', logstash_template_dir))
         upload_template('sdswatch_client.conf', '~/mozart/etc/sdswatch_client.conf', use_jinja=True,
-                        context=ctx, template_dir=os.path.join(ops_dir, 'mozart/ops/hysds/configs/logstash'))
+                        context=ctx, template_dir=resolve_files_dir('sdswatch_client.conf', logstash_template_dir))
         if mozart_es_engine == "opensearch":
             send_template("run_sdswatch_client_opensearch.sh", "~/mozart/bin/run_sdswatch_client.sh")
         else:
@@ -908,9 +934,9 @@ def send_shipper_conf(node_type, log_dir, cluster_jobs, redis_ip_job_status,
         run("chmod 755 ~/mozart/bin/watch_systemd_services.py")
     elif node_type == 'metrics':
         upload_template('indexer.conf.metrics', '~/metrics/etc/indexer.conf', use_jinja=True, context=ctx,
-                        template_dir=os.path.join(ops_dir, 'mozart/ops/hysds/configs/logstash'))
+                        template_dir=resolve_files_dir('indexer.conf.metrics', logstash_template_dir))
         upload_template('sdswatch_client.conf', '~/metrics/etc/sdswatch_client.conf', use_jinja=True,
-                        context=ctx, template_dir=os.path.join(ops_dir, 'mozart/ops/hysds/configs/logstash'))
+                        context=ctx, template_dir=resolve_files_dir('sdswatch_client.conf', logstash_template_dir))
         if metrics_es_engine == "opensearch":
             send_template("run_sdswatch_client_opensearch.sh", "~/metrics/bin/run_sdswatch_client.sh")
         else:
@@ -922,7 +948,7 @@ def send_shipper_conf(node_type, log_dir, cluster_jobs, redis_ip_job_status,
         run("chmod 755 ~/metrics/bin/watch_systemd_services.py")
     elif node_type == 'grq':
         upload_template('sdswatch_client.conf', '~/sciflo/etc/sdswatch_client.conf', use_jinja=True,
-                        context=ctx, template_dir=os.path.join(ops_dir, 'mozart/ops/hysds/configs/logstash'))
+                        context=ctx, template_dir=resolve_files_dir('sdswatch_client.conf', logstash_template_dir))
         if grq_es_engine == "opensearch":
             send_template("run_sdswatch_client_opensearch.sh", "~/sciflo/bin/run_sdswatch_client.sh")
         else:
@@ -934,7 +960,7 @@ def send_shipper_conf(node_type, log_dir, cluster_jobs, redis_ip_job_status,
         run("chmod 755 ~/sciflo/bin/watch_systemd_services.py")
     elif node_type in ('verdi', 'verdi-asg', 'factotum'):
         upload_template('sdswatch_client.conf', '~/verdi/etc/sdswatch_client.conf', use_jinja=True,
-                        context=ctx, template_dir=os.path.join(ops_dir, 'mozart/ops/hysds/configs/logstash'))
+                        context=ctx, template_dir=resolve_files_dir('sdswatch_client.conf', logstash_template_dir))
         if metrics_es_engine == "opensearch":
             send_template("run_sdswatch_client_opensearch.sh", "~/verdi/bin/run_sdswatch_client.sh")
         else:
@@ -965,7 +991,7 @@ def send_logstash_jvm_options(node_type):
 
 def send_celeryconf(node_type):
     ctx = get_context(node_type)
-    template_dir = os.path.join(ops_dir, 'mozart/ops/hysds/configs/celery')
+    template_dir = get_package_config_dir('hysds', 'configs/celery')
     if node_type == 'mozart':
         base_dir = "mozart"
     elif node_type == 'metrics':
@@ -989,8 +1015,9 @@ def send_celeryconf(node_type):
 
 def send_mozartconf():
     dest_file = '~/mozart/ops/mozart/settings.cfg'
+    template_dir = get_package_config_dir('mozart', 'settings')
     upload_template('settings.cfg.tmpl', dest_file, use_jinja=True, context=get_context('mozart'),
-                    template_dir=os.path.join(ops_dir, 'mozart/ops/mozart/settings'))
+                    template_dir=resolve_files_dir('settings.cfg.tmpl', template_dir))
     with prefix('source ~/mozart/bin/activate'):
         with cd('~/mozart/ops/mozart'):
             mkdir('~/mozart/ops/mozart/data',
