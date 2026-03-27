@@ -14,7 +14,7 @@ from fabric.api import execute, hide
 from tqdm import tqdm
 from urllib.parse import urlparse
 
-from prompt_toolkit.shortcuts import prompt, print_tokens
+from prompt_toolkit.shortcuts import prompt
 from prompt_toolkit.styles import style_from_dict
 from prompt_toolkit.validation import Validator, ValidationError
 from pygments.token import Token
