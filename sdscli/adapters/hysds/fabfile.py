@@ -306,9 +306,10 @@ def send_template_user_override(tmpl, dest, tmpl_dir=None, node_type=None):
                     template_dir=resolve_files_dir(tmpl, tmpl_dir))
 
 
-def set_spyddder_settings():
-    upload_template('settings.json.tmpl', '~/verdi/ops/spyddder-man/settings.json', use_jinja=True,
-                    context=get_context(), template_dir=os.path.join(ops_dir, 'mozart/ops/spyddder-man'))
+# Deprecated: spyddder-man not included in PyPI-based deployments
+# def set_spyddder_settings():
+#     upload_template('settings.json.tmpl', '~/verdi/ops/spyddder-man/settings.json', use_jinja=True,
+#                     context=get_context(), template_dir=os.path.join(ops_dir, 'mozart/ops/spyddder-man'))
 
 
 def rsync_code(node_type, dir_path=None):
@@ -1026,9 +1027,10 @@ def send_mozartconf():
 
 
 def send_hysds_ui_conf():
+    hysds_ui_config_dir = get_package_config_dir('hysds_ui', 'src/config')
     dest_file = '~/mozart/ops/hysds_ui/src/config/index.js'
     upload_template('index.template.js', dest_file, use_jinja=True, context=get_context('mozart'),
-                    template_dir=os.path.join(ops_dir, 'mozart/ops/hysds_ui/src/config'))
+                    template_dir=resolve_files_dir('index.template.js', hysds_ui_config_dir))
 
     user_path = get_user_files_path()
 
@@ -1039,7 +1041,7 @@ def send_hysds_ui_conf():
     else:
         print('using default tosca configuration')
         send_template_user_override('tosca.template.js', tosca_cfg,
-                                    tmpl_dir=os.path.join(ops_dir, 'mozart/ops/hysds_ui/src/config'),
+                                    tmpl_dir=hysds_ui_config_dir,
                                     node_type='mozart')
 
     figaro_cfg = '~/mozart/etc/figaro.js'
@@ -1049,7 +1051,7 @@ def send_hysds_ui_conf():
     else:
         print('using default figaro configuration')
         send_template_user_override('figaro.template.js', figaro_cfg,
-                                    tmpl_dir=os.path.join(ops_dir, 'mozart/ops/hysds_ui/src/config'),
+                                    tmpl_dir=hysds_ui_config_dir,
                                     node_type='mozart')
 
     # symlink to ~/mozart/ops/hysds_ui/src/config/
@@ -1058,9 +1060,10 @@ def send_hysds_ui_conf():
 
 
 def send_grq2conf():
+    grq2_config_dir = get_package_config_dir('grq2', 'config')
     dest_file = '~/sciflo/ops/grq2/settings.cfg'
     upload_template('settings.cfg.tmpl', dest_file, use_jinja=True, context=get_context('grq'),
-                    template_dir=os.path.join(ops_dir, 'mozart/ops/grq2/config'))
+                    template_dir=resolve_files_dir('settings.cfg.tmpl', grq2_config_dir))
 
 
 def send_peleconf(send_file='settings.cfg.tmpl', template_dir=get_user_files_path()):
