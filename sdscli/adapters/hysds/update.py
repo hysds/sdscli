@@ -132,7 +132,7 @@ def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
         execute(fab.send_mozartconf, roles=[comp])
         execute(fab.rm_rf, '~/mozart/ops/mozart/actions_config.json',
                 roles=[comp])
-        execute(fab.copy, '~/mozart/ops/mozart/configs/actions_config.json.example',
+        execute(fab.copy_package_config_file, 'mozart', 'configs/actions_config.json.example',
                 '~/mozart/ops/mozart/actions_config.json', roles=[comp])
         bar.update()
 
