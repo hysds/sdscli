@@ -172,29 +172,67 @@ def is_pypi_install():
     return os.path.exists(os.path.join(site_packages, 'hysds'))
 
 
-def get_package_config_dir(package_name, config_subdir):
+def get_package_config_dir(package_name, config_subdir, remote=False):
     """Get config directory from installed package or editable install.
     
     Priority:
     1. Installed package shared-data location (PyPI install)
     2. Editable install location (development)
+    
+    :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
+    :param config_subdir: Config subdirectory (e.g., 'settings', 'configs/supervisor')
+    :param remote: If True, check remote host; if False, check local machine
+    :return: Full path to config directory
     """
     import sys
     import sysconfig
     
-    # Try shared-data location first (standard for PyPI packages)
-    share_dir = os.path.join(sysconfig.get_path('data'), 'share', package_name, config_subdir)
-    if os.path.exists(share_dir):
-        return share_dir
+    base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
+    base = base_map.get(package_name, 'mozart')
     
-    # Fallback to editable install location
-    editable_dir = os.path.join(ops_dir, 'mozart/ops', package_name, config_subdir)
-    if os.path.exists(editable_dir):
+    if remote:
+        # Check remote host using fabric run()
+        logger.debug(f'[get_package_config_dir] Called with package={package_name}, config_subdir={config_subdir}, remote=True')
+        
+        pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{config_subdir}\'))"'
+        logger.debug(f'[get_package_config_dir] Running on remote: {pypi_path_cmd}')
+        pypi_path_result = run(pypi_path_cmd, warn_only=True)
+        logger.debug(f'[get_package_config_dir] Result succeeded={pypi_path_result.succeeded}, return_code={pypi_path_result.return_code}')
+        
+        if pypi_path_result.succeeded:
+            pypi_path = pypi_path_result.strip()
+            logger.debug(f'[get_package_config_dir] PyPI path from remote: {pypi_path}')
+            
+            logger.debug(f'[get_package_config_dir] Checking if directory exists: test -d {pypi_path}')
+            check_result = run(f'test -d {pypi_path}', warn_only=True)
+            logger.debug(f'[get_package_config_dir] Directory exists check succeeded={check_result.succeeded}')
+            
+            if check_result.succeeded:
+                logger.debug(f'[get_package_config_dir] Returning PyPI path: {pypi_path}')
+                return pypi_path
+            else:
+                logger.debug(f'[get_package_config_dir] Directory not found at PyPI location: {pypi_path}')
+        else:
+            logger.debug(f'[get_package_config_dir] Failed to get PyPI path from remote')
+        
+        # Fallback to editable install location
+        fallback_path = f'~/{base}/ops/{package_name}/{config_subdir}'
+        logger.debug(f'[get_package_config_dir] Returning fallback path: {fallback_path}')
+        return fallback_path
+    else:
+        # Check local machine
+        share_dir = os.path.join(sysconfig.get_path('data'), 'share', package_name, config_subdir)
+        if os.path.exists(share_dir):
+            return share_dir
+        
+        # Fallback to editable install location
+        editable_dir = os.path.join(ops_dir, 'mozart/ops', package_name, config_subdir)
+        if os.path.exists(editable_dir):
+            return editable_dir
+        
+        # Last resort: return the editable path even if it doesn't exist
+        # (will fail later with a clear error message)
         return editable_dir
-    
-    # Last resort: return the editable path even if it doesn't exist
-    # (will fail later with a clear error message)
-    return editable_dir
 
 
 def get_package_script_path(package_name, script_relative_path):
@@ -1177,7 +1215,7 @@ def send_mozartconf():
     # Write to etc/ directory for both PyPI and editable installs
     dest_file = '~/mozart/etc/settings.cfg'
     run('mkdir -p ~/mozart/etc')
-    template_dir = get_package_config_dir('mozart', 'settings')
+    template_dir = get_package_config_dir('mozart', 'settings', remote=True)
     upload_template('settings.cfg.tmpl', dest_file, use_jinja=True, context=get_context('mozart'),
                     template_dir=resolve_files_dir('settings.cfg.tmpl', template_dir))
     
