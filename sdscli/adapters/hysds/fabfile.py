@@ -1222,12 +1222,9 @@ def send_mozartconf():
     # Create data directory and initialize database
     with prefix('source ~/mozart/bin/activate'):
         mkdir('~/mozart/data', context['OPS_USER'], context['OPS_USER'])
-        # TODO: Convert db_create.py to console script in Phase 2
-        if is_pypi_install():
-            run('python -m mozart.db_create')
-        else:
-            with cd('~/mozart/ops/mozart'):
-                run('./db_create.py')
+        # Find db_create.py script in PyPI or editable install location
+        db_create_script = get_package_script_path('mozart', 'scripts/db_create.py')
+        run(f'python {db_create_script}')
 
 
 def send_hysds_ui_conf():
