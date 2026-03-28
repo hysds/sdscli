@@ -243,6 +243,70 @@ def get_package_script_path(package_name, script_relative_path):
     return fallback_path
 
 
+def copy_package_config_file(package_name, config_relative_path, dest):
+    """Copy a package config file to destination on remote host.
+    
+    For PyPI installs: Copies from share/package/config_relative_path
+    For editable installs: Copies from ops/package/config_relative_path
+    
+    This function runs entirely on the remote host.
+    
+    :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
+    :param config_relative_path: Relative path to config (e.g., 'configs/orchestrator/orchestrator_jobs.json')
+    :param dest: Destination path on remote host
+    """
+    base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
+    base = base_map.get(package_name, 'mozart')
+    
+    # Try PyPI location first
+    pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{config_relative_path}\'))"'
+    pypi_path_result = run(pypi_path_cmd, warn_only=True)
+    
+    if pypi_path_result.succeeded:
+        pypi_path = pypi_path_result.strip()
+        check_result = run(f'test -f {pypi_path}', warn_only=True)
+        
+        if check_result.succeeded:
+            run(f'cp {pypi_path} {dest}')
+            return
+    
+    # Fallback to editable install location
+    fallback_path = f'~/{base}/ops/{package_name}/{config_relative_path}'
+    run(f'cp {fallback_path} {dest}')
+
+
+def copy_package_dir(package_name, dir_relative_path, dest):
+    """Copy a package directory to destination on remote host.
+    
+    For PyPI installs: Copies from share/package/dir_relative_path
+    For editable installs: Copies from ops/package/dir_relative_path
+    
+    This function runs entirely on the remote host.
+    
+    :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
+    :param dir_relative_path: Relative path to directory (e.g., 'scripts/job_creators')
+    :param dest: Destination path on remote host
+    """
+    base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
+    base = base_map.get(package_name, 'mozart')
+    
+    # Try PyPI location first
+    pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{dir_relative_path}\'))"'
+    pypi_path_result = run(pypi_path_cmd, warn_only=True)
+    
+    if pypi_path_result.succeeded:
+        pypi_path = pypi_path_result.strip()
+        check_result = run(f'test -d {pypi_path}', warn_only=True)
+        
+        if check_result.succeeded:
+            run(f'cp -rp {pypi_path} {dest}')
+            return
+    
+    # Fallback to editable install location
+    fallback_path = f'~/{base}/ops/{package_name}/{dir_relative_path}'
+    run(f'cp -rp {fallback_path} {dest}')
+
+
 def resolve_files_dir(fname, files_dir):
     """Resolve file or template from user SDS files or default location."""
 

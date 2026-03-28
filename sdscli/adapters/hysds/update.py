@@ -94,17 +94,17 @@ def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
         # update orchestrator config
         set_bar_desc(bar, 'Updating orchestrator config')
         execute(fab.rm_rf, '~/mozart/etc/orchestrator_*.json', roles=[comp])
-        execute(fab.copy, '~/mozart/ops/hysds/configs/orchestrator/orchestrator_jobs.json',
+        execute(fab.copy_package_config_file, 'hysds', 'configs/orchestrator/orchestrator_jobs.json',
                 '~/mozart/etc/orchestrator_jobs.json', roles=[comp])
-        execute(fab.copy, '~/mozart/ops/hysds/configs/orchestrator/orchestrator_datasets.json',
+        execute(fab.copy_package_config_file, 'hysds', 'configs/orchestrator/orchestrator_datasets.json',
                 '~/mozart/etc/orchestrator_datasets.json', roles=[comp])
         bar.update()
 
         # update job_creators
         set_bar_desc(bar, 'Updating job_creators')
         execute(fab.rm_rf, '~/mozart/etc/job_creators', roles=[comp])
-        execute(fab.cp_rp, '~/mozart/ops/hysds/scripts/job_creators',
-                '~/mozart/etc/', roles=[comp])
+        execute(fab.copy_package_dir, 'hysds', 'scripts/job_creators',
+                '~/mozart/etc/job_creators', roles=[comp])
         bar.update()
 
         # update datasets config; overwrite datasets config with domain-specific config
