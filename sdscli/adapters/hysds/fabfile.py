@@ -745,18 +745,18 @@ def clean_hysds_ios():
 def create_grq_user_rules_index():
     script_path = get_package_script_path('grq2', 'scripts/create_user_rules_index.py')
     with prefix('source ~/sciflo/bin/activate'):
-        run(f'python {script_path}')
+        run(f'PYTHONPATH=$HOME/sciflo/etc:$PYTHONPATH python {script_path}')
 
 
 def create_hysds_ios_grq_index():
     script_path = get_package_script_path('grq2', 'scripts/create_hysds_ios_index.py')
     with prefix('source ~/sciflo/bin/activate'):
-        run(f'python {script_path}')
+        run(f'PYTHONPATH=$HOME/sciflo/etc:$PYTHONPATH python {script_path}')
 
 
 def install_ingest_pipeline():
     script_path = get_package_script_path('grq2', 'scripts/install_ingest_pipeline.py')
-    run(f'python {script_path}')
+    run(f'PYTHONPATH=$HOME/sciflo/etc:$PYTHONPATH python {script_path}')
 
 
 ##########################
