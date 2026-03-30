@@ -159,6 +159,8 @@ def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
         bar.update()
 
         # link ssl certs to apps
+        # Create runtime directory for SSL certs (needed for PyPI installs)
+        execute(fab.mkdir, '~/mozart/ops/mozart', context['OPS_USER'], context['OPS_USER'], roles=[comp])
         execute(fab.ln_sf, '~/ssl/server.key', '~/mozart/ops/mozart/server.key', roles=[comp])
         execute(fab.ln_sf, '~/ssl/server.pem', '~/mozart/ops/mozart/server.pem', roles=[comp])
         bar.update()
@@ -515,6 +517,9 @@ def update_grq(conf, ndeps=False, config_only=False, comp='grq'):
         bar.update()
 
         # link ssl certs to apps
+        # Create runtime directories for SSL certs (needed for PyPI installs)
+        execute(fab.mkdir, '~/sciflo/ops/grq2', context['OPS_USER'], context['OPS_USER'], roles=[comp])
+        execute(fab.mkdir, '~/sciflo/ops/pele', context['OPS_USER'], context['OPS_USER'], roles=[comp])
         execute(fab.ln_sf, '~/ssl/server.key',
                 '~/sciflo/ops/grq2/server.key', roles=[comp])
         execute(fab.ln_sf, '~/ssl/server.pem',
