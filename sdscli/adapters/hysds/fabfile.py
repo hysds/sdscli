@@ -1223,11 +1223,9 @@ def send_peleconf(send_file='settings.cfg.tmpl', template_dir=get_user_files_pat
     upload_template(send_file, dest_file, use_jinja=True, context=get_context('grq'),
                     template_dir=tmpl_dir)
     
-    # Run flask commands - works for both PyPI and editable installs since flask finds the app
+    # Initialize database - works for both PyPI and editable installs
     with prefix('source ~/sciflo/bin/activate'):
-        run('flask --app pele create-db')
-        run('flask --app pele db init', warn_only=True)
-        run('flask --app pele db migrate', warn_only=True)
+        run('pele-init-db')
 
 
 def build_hysds_ui():
