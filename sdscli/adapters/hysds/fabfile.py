@@ -172,19 +172,21 @@ def is_pypi_install():
     return os.path.exists(os.path.join(site_packages, 'hysds'))
 
 
-def get_package_config_dir(package_name, config_subdir, remote=False):
-    """Get config directory from installed package or editable install.
+def get_package_resource_path(package_name, resource_path, remote=False, resource_type='auto'):
+    """Get path to package resource for both PyPI and editable installs.
+    
+    This is the master function that handles all package resource path resolution.
     
     Priority:
-    1. Installed package shared-data location (PyPI install)
-    2. Editable install location (development)
+    1. PyPI install: share/package/resource_path
+    2. Editable install: ops/package/resource_path
     
     :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
-    :param config_subdir: Config subdirectory (e.g., 'settings', 'configs/supervisor')
+    :param resource_path: Relative path to resource (e.g., 'scripts/db_create.py', 'configs/settings')
     :param remote: If True, check remote host; if False, check local machine
-    :return: Full path to config directory
+    :param resource_type: 'file', 'dir', or 'auto' (auto-detect based on test results)
+    :return: Full path to resource
     """
-    import sys
     import sysconfig
     
     base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
@@ -192,157 +194,101 @@ def get_package_config_dir(package_name, config_subdir, remote=False):
     
     if remote:
         # Check remote host using fabric run()
-        logger.debug(f'[get_package_config_dir] Called with package={package_name}, config_subdir={config_subdir}, remote=True')
+        logger.debug(f'[get_package_resource_path] Called with package={package_name}, resource={resource_path}, remote=True, type={resource_type}')
         
-        pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{config_subdir}\'))"'
-        logger.debug(f'[get_package_config_dir] Running on remote: {pypi_path_cmd}')
+        # Get PyPI path from remote
+        pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{resource_path}\'))"'
+        logger.debug(f'[get_package_resource_path] Running on remote: {pypi_path_cmd}')
         pypi_path_result = run(pypi_path_cmd, warn_only=True)
-        logger.debug(f'[get_package_config_dir] Result succeeded={pypi_path_result.succeeded}, return_code={pypi_path_result.return_code}')
+        logger.debug(f'[get_package_resource_path] Result succeeded={pypi_path_result.succeeded}, return_code={pypi_path_result.return_code}')
         
         if pypi_path_result.succeeded:
             pypi_path = pypi_path_result.strip()
-            logger.debug(f'[get_package_config_dir] PyPI path from remote: {pypi_path}')
+            logger.debug(f'[get_package_resource_path] PyPI path from remote: {pypi_path}')
             
-            logger.debug(f'[get_package_config_dir] Checking if directory exists: test -d {pypi_path}')
-            check_result = run(f'test -d {pypi_path}', warn_only=True)
-            logger.debug(f'[get_package_config_dir] Directory exists check succeeded={check_result.succeeded}')
+            # Determine test command based on resource type
+            if resource_type == 'file':
+                test_cmd = f'test -f {pypi_path}'
+            elif resource_type == 'dir':
+                test_cmd = f'test -d {pypi_path}'
+            else:  # auto
+                # Try file first, then directory
+                test_cmd = f'test -f {pypi_path} || test -d {pypi_path}'
+            
+            logger.debug(f'[get_package_resource_path] Checking if resource exists: {test_cmd}')
+            check_result = run(test_cmd, warn_only=True)
+            logger.debug(f'[get_package_resource_path] Resource exists check succeeded={check_result.succeeded}')
             
             if check_result.succeeded:
-                logger.debug(f'[get_package_config_dir] Returning PyPI path: {pypi_path}')
+                logger.debug(f'[get_package_resource_path] Returning PyPI path: {pypi_path}')
                 return pypi_path
             else:
-                logger.debug(f'[get_package_config_dir] Directory not found at PyPI location: {pypi_path}')
+                logger.debug(f'[get_package_resource_path] Resource not found at PyPI location: {pypi_path}')
         else:
-            logger.debug(f'[get_package_config_dir] Failed to get PyPI path from remote')
+            logger.debug(f'[get_package_resource_path] Failed to get PyPI path from remote')
         
         # Fallback to editable install location
-        fallback_path = f'~/{base}/ops/{package_name}/{config_subdir}'
-        logger.debug(f'[get_package_config_dir] Returning fallback path: {fallback_path}')
+        fallback_path = f'~/{base}/ops/{package_name}/{resource_path}'
+        logger.debug(f'[get_package_resource_path] Returning fallback path: {fallback_path}')
         return fallback_path
     else:
         # Check local machine
-        share_dir = os.path.join(sysconfig.get_path('data'), 'share', package_name, config_subdir)
-        if os.path.exists(share_dir):
-            return share_dir
+        pypi_path = os.path.join(sysconfig.get_path('data'), 'share', package_name, resource_path)
+        
+        # Check if resource exists based on type
+        resource_exists = False
+        if resource_type == 'file':
+            resource_exists = os.path.isfile(pypi_path)
+        elif resource_type == 'dir':
+            resource_exists = os.path.isdir(pypi_path)
+        else:  # auto
+            resource_exists = os.path.exists(pypi_path)
+        
+        if resource_exists:
+            return pypi_path
         
         # Fallback to editable install location
-        editable_dir = os.path.join(ops_dir, 'mozart/ops', package_name, config_subdir)
-        if os.path.exists(editable_dir):
-            return editable_dir
+        editable_path = os.path.join(ops_dir, 'mozart/ops', package_name, resource_path)
+        if os.path.exists(editable_path):
+            return editable_path
         
         # Last resort: return the editable path even if it doesn't exist
-        # (will fail later with a clear error message)
-        return editable_dir
+        return editable_path
+
+
+# Backward compatibility wrappers
+def get_package_config_dir(package_name, config_subdir, remote=False):
+    """Get config directory from installed package or editable install.
+    
+    This is a wrapper around get_package_resource_path for backward compatibility.
+    """
+    return get_package_resource_path(package_name, config_subdir, remote=remote, resource_type='dir')
 
 
 def get_package_script_path(package_name, script_relative_path):
     """Get full path to a package script file on remote host.
     
-    For PyPI installs: Returns path in share/package/scripts/
-    For editable installs: Returns path in ops/package/scripts/
-    
-    This function checks the REMOTE host to determine the correct path.
-    
-    :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
-    :param script_relative_path: Relative path to script (e.g., 'scripts/install_base_es_template.sh')
-    :return: Full path to script on remote host
+    This is a wrapper around get_package_resource_path for backward compatibility.
     """
-    base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
-    base = base_map.get(package_name, 'mozart')
-    
-    logger.debug(f'[get_package_script_path] Called with package={package_name}, script={script_relative_path}')
-    
-    # Try PyPI location first by checking on remote host
-    pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{script_relative_path}\'))"'
-    logger.debug(f'[get_package_script_path] Running on remote: {pypi_path_cmd}')
-    pypi_path_result = run(pypi_path_cmd, warn_only=True)
-    logger.debug(f'[get_package_script_path] Result succeeded={pypi_path_result.succeeded}, return_code={pypi_path_result.return_code}')
-    
-    if pypi_path_result.succeeded:
-        pypi_path = pypi_path_result.strip()
-        logger.debug(f'[get_package_script_path] PyPI path from remote: {pypi_path}')
-        
-        # Check if file exists at PyPI location on remote host
-        logger.debug(f'[get_package_script_path] Checking if file exists: test -f {pypi_path}')
-        check_result = run(f'test -f {pypi_path}', warn_only=True)
-        logger.debug(f'[get_package_script_path] File exists check succeeded={check_result.succeeded}')
-        
-        if check_result.succeeded:
-            logger.debug(f'[get_package_script_path] Returning PyPI path: {pypi_path}')
-            return pypi_path
-        else:
-            logger.debug(f'[get_package_script_path] File not found at PyPI location: {pypi_path}')
-    else:
-        logger.debug(f'[get_package_script_path] Failed to get PyPI path from remote')
-    
-    # Fallback to editable install location
-    fallback_path = os.path.join(ops_dir, f'{base}/ops/{package_name}/{script_relative_path}')
-    logger.debug(f'[get_package_script_path] Returning fallback path: {fallback_path}')
-    return fallback_path
+    return get_package_resource_path(package_name, script_relative_path, remote=True, resource_type='file')
 
 
 def copy_package_config_file(package_name, config_relative_path, dest):
     """Copy a package config file to destination on remote host.
     
-    For PyPI installs: Copies from share/package/config_relative_path
-    For editable installs: Copies from ops/package/config_relative_path
-    
-    This function runs entirely on the remote host.
-    
-    :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
-    :param config_relative_path: Relative path to config (e.g., 'configs/orchestrator/orchestrator_jobs.json')
-    :param dest: Destination path on remote host
+    This is a wrapper around get_package_resource_path for backward compatibility.
     """
-    base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
-    base = base_map.get(package_name, 'mozart')
-    
-    # Try PyPI location first
-    pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{config_relative_path}\'))"'
-    pypi_path_result = run(pypi_path_cmd, warn_only=True)
-    
-    if pypi_path_result.succeeded:
-        pypi_path = pypi_path_result.strip()
-        check_result = run(f'test -f {pypi_path}', warn_only=True)
-        
-        if check_result.succeeded:
-            run(f'cp {pypi_path} {dest}')
-            return
-    
-    # Fallback to editable install location
-    fallback_path = f'~/{base}/ops/{package_name}/{config_relative_path}'
-    run(f'cp {fallback_path} {dest}')
+    src_path = get_package_resource_path(package_name, config_relative_path, remote=True, resource_type='file')
+    run(f'cp {src_path} {dest}')
 
 
 def copy_package_dir(package_name, dir_relative_path, dest):
     """Copy a package directory to destination on remote host.
     
-    For PyPI installs: Copies from share/package/dir_relative_path
-    For editable installs: Copies from ops/package/dir_relative_path
-    
-    This function runs entirely on the remote host.
-    
-    :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
-    :param dir_relative_path: Relative path to directory (e.g., 'scripts/job_creators')
-    :param dest: Destination path on remote host
+    This is a wrapper around get_package_resource_path for backward compatibility.
     """
-    base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
-    base = base_map.get(package_name, 'mozart')
-    
-    # Try PyPI location first
-    pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{dir_relative_path}\'))"'
-    pypi_path_result = run(pypi_path_cmd, warn_only=True)
-    
-    if pypi_path_result.succeeded:
-        pypi_path = pypi_path_result.strip()
-        check_result = run(f'test -d {pypi_path}', warn_only=True)
-        
-        if check_result.succeeded:
-            run(f'cp -rp {pypi_path} {dest}')
-            return
-    
-    # Fallback to editable install location
-    fallback_path = f'~/{base}/ops/{package_name}/{dir_relative_path}'
-    run(f'cp -rp {fallback_path} {dest}')
+    src_path = get_package_resource_path(package_name, dir_relative_path, remote=True, resource_type='dir')
+    run(f'cp -rp {src_path} {dest}')
 
 
 def resolve_files_dir(fname, files_dir):
