@@ -130,10 +130,6 @@ def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
         set_bar_desc(bar, 'Updating mozart config')
         execute(fab.rm_rf, '~/mozart/ops/mozart/settings.cfg', roles=[comp])
         execute(fab.send_mozartconf, roles=[comp])
-        execute(fab.rm_rf, '~/mozart/ops/mozart/actions_config.json',
-                roles=[comp])
-        execute(fab.copy_package_config_file, 'mozart', 'configs/actions_config.json.example',
-                '~/mozart/ops/mozart/actions_config.json', roles=[comp])
         bar.update()
 
         # update hysds_ui config
