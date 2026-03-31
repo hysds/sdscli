@@ -955,12 +955,22 @@ def pip_install_with_req(node_type, dest):
             run('pip install -e .')
 
 
-def pip_install_with_req(node_type, dest, ndeps):
-    """Install package from local directory (editable install only).
+def pip_install_with_req(node_type, dest, ndeps, force_install=False):
+    """Install package from local directory.
     
-    For PyPI installations, this is a no-op since packages are already installed.
+    For PyPI installations:
+    - If force_install=True, always installs (for project-specific packages)
+    - If force_install=False, skips if directory doesn't exist (base packages from PyPI)
+    
+    For editable installations:
+    - Always installs from local directory
+    
+    :param node_type: Type of node (mozart, grq, metrics, verdi)
+    :param dest: Destination directory containing package
+    :param ndeps: If True, install with --no-deps flag
+    :param force_install: If True, skip PyPI check and always install
     """
-    if is_pypi_install(remote=True):
+    if not force_install and is_pypi_install(remote=True):
         logger.info(f"Skipping pip install from {dest} - using PyPI-installed packages")
         return
     
