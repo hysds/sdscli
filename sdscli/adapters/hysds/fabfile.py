@@ -160,16 +160,37 @@ def get_context(node_type=None):
     return ctx
 
 
-def is_pypi_install():
-    """Check if this is a PyPI-based installation vs editable install.
+def is_pypi_install(remote=False):
+    """Check if HySDS packages use editable installs.
     
-    Returns True if hysds is installed in site-packages (PyPI install),
-    False if using editable install from ~/mozart/ops/.
+    Returns False if any HySDS component uses editable install,
+    True otherwise (PyPI install or not installed).
     """
-    import sysconfig
-    
-    site_packages = sysconfig.get_path('purelib')
-    return os.path.exists(os.path.join(site_packages, 'hysds'))
+    if remote:
+        # Check for editable install in any of the possible locations
+        check_cmd = (
+            "test -d ~/mozart/ops/hysds || "
+            "test -d ~/metrics/ops/hysds || "
+            "test -d ~/sciflo/ops/hysds || "
+            "test -d ~/verdi/ops/hysds && "
+            "echo 'editable' || echo 'pypi'"
+        )
+        with settings(warn_only=True):
+            result = run(check_cmd, capture=True).strip()
+        return result == 'pypi'
+    else:
+        # Check local for any editable installs
+        import os
+        editable_paths = [
+            '~/mozart/ops/hysds',
+            '~/metrics/ops/hysds',
+            '~/sciflo/ops/hysds',
+            '~/verdi/ops/hysds'
+        ]
+        for path in editable_paths:
+            if os.path.exists(os.path.expanduser(path)):
+                return False
+        return True
 
 
 def get_package_resource_path(package_name, resource_path, remote=False, resource_type='auto'):
@@ -939,7 +960,7 @@ def pip_install_with_req(node_type, dest, ndeps):
     
     For PyPI installations, this is a no-op since packages are already installed.
     """
-    if is_pypi_install():
+    if is_pypi_install(remote=True):
         logger.info(f"Skipping pip install from {dest} - using PyPI-installed packages")
         return
     
