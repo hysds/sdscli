@@ -1208,11 +1208,22 @@ def send_hysds_ui_conf():
 
 def send_grq2conf():
     # Write to etc/ directory for both PyPI and editable installs
-    grq2_config_dir = get_package_config_dir('grq2', 'config')
     dest_file = '~/sciflo/etc/grq2_settings.cfg'
     run('mkdir -p ~/sciflo/etc')
-    upload_template('settings.cfg.tmpl', dest_file, use_jinja=True, context=get_context('grq'),
-                    template_dir=resolve_files_dir('settings.cfg.tmpl', grq2_config_dir))
+    
+    # Try user files path first (new location for PyPI compatibility)
+    user_files_grq2_dir = os.path.join(get_user_files_path(), 'grq2')
+    template_name = 'grq2_settings.cfg.tmpl'
+    
+    if os.path.exists(os.path.join(user_files_grq2_dir, template_name)):
+        # Use template from ~/.sds/files/grq2 (works for both editable and PyPI)
+        template_dir = user_files_grq2_dir
+    else:
+        # Fallback to editable install location for backward compatibility
+        template_dir = os.path.expanduser('~/mozart/ops/grq2/config')
+    
+    upload_template(template_name, dest_file, use_jinja=True, 
+                    context=get_context('grq'), template_dir=template_dir)
 
 
 def send_peleconf(send_file='settings.cfg.tmpl', template_dir=get_user_files_path()):
