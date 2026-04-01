@@ -954,7 +954,7 @@ def import_kibana(comp='grq'):
         if fab.grq_es_engine == "opensearch":
             execute(fab.send_template_user_override, 'import_dashboard.sh.tmpl',
                     '~/metrics/ops/kibana_metrics/import_dashboard.sh',
-                    '~/mozart/ops/sdscli/sdscli/adapters/hysds/files/opensearch_dashboards_import',
+                    '~/.sds/files/opensearch_dashboards_import',
                     roles=[comp])
             execute(fab.chmod, 755,
                     '~/metrics/ops/kibana_metrics/import_dashboard.sh', roles=[comp])
@@ -971,7 +971,7 @@ def import_kibana(comp='grq'):
         else:
             execute(fab.send_template_user_override, 'import_dashboard.sh.tmpl',
                     '~/metrics/ops/kibana_metrics/import_dashboard.sh',
-                    '~/mozart/ops/sdscli/sdscli/adapters/hysds/files/kibana_dashboard_import',
+                    '~/.sds/files/kibana_dashboard_import',
                     roles=[comp])
             execute(fab.chmod, 755,
                     '~/metrics/ops/kibana_metrics/import_dashboard.sh', roles=[comp])
