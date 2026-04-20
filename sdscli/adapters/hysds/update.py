@@ -83,6 +83,16 @@ def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
         execute(fab.send_logstash_jvm_options, 'mozart', roles=[comp])
         bar.update()
 
+        # Copy script wrappers for PyPI compatibility
+        set_bar_desc(bar, 'Installing script wrappers')
+        for script in ['log_instance_stats.sh', 'process_events.sh', 'watchdog_job_timeouts.sh', 
+                'watchdog_task_timeouts.sh', 'watchdog_worker_timeouts.sh']:
+            wrapper_src = execute(fab.get_package_resource_path, 'hysds', f'scripts/{script}',
+                                  remote=True, resource_type='file', roles=[comp])
+            execute(fab.copy, wrapper_src[comp], f'~/mozart/bin/{script}', roles=[comp])
+            execute(fab.chmod, 755, f'~/mozart/bin/{script}', roles=[comp])
+        bar.update()
+
         # update supervisor config
         set_bar_desc(bar, 'Updating supervisor config')
         execute(fab.rm_rf, '~/mozart/etc/supervisord.conf', roles=[comp])
@@ -340,6 +350,14 @@ def update_metrics(conf, ndeps=False, config_only=False, comp='metrics'):
         execute(fab.send_logstash_jvm_options, 'metrics', roles=[comp])
         bar.update()
 
+        # Copy script wrappers for PyPI compatibility
+        set_bar_desc(bar, 'Installing script wrappers')
+        wrapper_src = execute(fab.get_package_resource_path, 'hysds', 'scripts/log_instance_stats.sh',
+                              remote=True, resource_type='file', roles=[comp])
+        execute(fab.copy, wrapper_src[comp], '~/metrics/bin/log_instance_stats.sh', roles=[comp])
+        execute(fab.chmod, 755, '~/metrics/bin/log_instance_stats.sh', roles=[comp])
+        bar.update()
+
         # update celery config
         set_bar_desc(bar, 'Updating celery config')
         execute(fab.rm_rf, '~/metrics/ops/hysds/celeryconfig.py', roles=[comp])
@@ -485,6 +503,14 @@ def update_grq(conf, ndeps=False, config_only=False, comp='grq'):
         execute(fab.create_hysds_ios_grq_index, roles=[comp])
         bar.update()
 
+        # Copy script wrappers for PyPI compatibility
+        set_bar_desc(bar, 'Installing script wrappers')
+        wrapper_src = execute(fab.get_package_resource_path, 'hysds', 'scripts/log_instance_stats.sh',
+                              remote=True, resource_type='file', roles=[comp])
+        execute(fab.copy, wrapper_src[comp], '~/sciflo/bin/log_instance_stats.sh', roles=[comp])
+        execute(fab.chmod, 755, '~/sciflo/bin/log_instance_stats.sh', roles=[comp])
+        bar.update()
+
         # update supervisor config
         set_bar_desc(bar, 'Updating supervisor config')
         execute(fab.rm_rf, '~/sciflo/etc/supervisord.conf', roles=[comp])
@@ -600,6 +626,14 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
                     '~/verdi/ops/chimera', ndeps, roles=[comp])
             bar.update()
 
+        # Copy script wrappers for PyPI compatibility
+        set_bar_desc(bar, 'Installing script wrappers')
+        wrapper_src = execute(fab.get_package_resource_path, 'hysds', 'scripts/log_instance_stats.sh',
+                              remote=True, resource_type='file', roles=[comp])
+        execute(fab.copy, wrapper_src[comp], '~/verdi/bin/log_instance_stats.sh', roles=[comp])
+        execute(fab.chmod, 755, '~/verdi/bin/log_instance_stats.sh', roles=[comp])
+        bar.update()
+ 
         # update celery config
         set_bar_desc(bar, 'Updating celery config')
         execute(fab.rm_rf, '~/verdi/ops/hysds/celeryconfig.py', roles=[comp])
@@ -720,6 +754,15 @@ def update_verdi(conf, ndeps=False, config_only=False, comp='verdi'):
         execute(fab.send_celeryconf, 'verdi', roles=[comp])
         bar.update()
 
+        # Copy script wrappers for PyPI compatibility
+        set_bar_desc(bar, 'Installing script wrappers')
+        wrapper_src = execute(fab.get_package_resource_path, 'hysds', 'scripts/log_instance_stats.sh',
+                              remote=True, resource_type='file', roles=[comp])
+        execute(fab.copy, wrapper_src[comp], '~/verdi/bin/log_instance_stats.sh', roles=[comp])
+        execute(fab.chmod, 755, '~/verdi/bin/log_instance_stats.sh', roles=[comp])
+        bar.update()
+ 
+
         # update supervisor config
         set_bar_desc(bar, 'Updating supervisor config')
         execute(fab.rm_rf, '~/verdi/etc/supervisord.conf', roles=[comp])
@@ -751,6 +794,11 @@ def update_verdi(conf, ndeps=False, config_only=False, comp='verdi'):
         set_bar_desc(bar, 'Expose logs')
         execute(fab.mkdir, '/data/work', None, None, roles=[comp])
         execute(fab.ln_sf, '~/verdi/log', '/data/work/log', roles=[comp])
+        bar.update()
+
+        # Create ops/hysds directory for PyPI compatibility (needed for factotum supervisord)
+        set_bar_desc(bar, 'Creating ops directories')
+        execute(fab.mkdir, '~/verdi/ops/hysds', None, None, roles=[comp])
         bar.update()
 
         # ship netrc
@@ -849,6 +897,11 @@ def ship_verdi(conf, encrypt=False, comp='mozart'):
         # ensure venv
         set_bar_desc(bar, 'Ensuring HySDS venv')
         execute(fab.ensure_venv, comp, roles=[comp])
+        bar.update()
+
+        # Create ops/hysds directory for PyPI compatibility (included in code bundles)
+        set_bar_desc(bar, 'Creating ops directories')
+        execute(fab.mkdir, '~/verdi/ops/hysds', None, None, roles=[comp])
         bar.update()
 
         # iterate over queues
