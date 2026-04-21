@@ -875,7 +875,7 @@ def update(comp, debug=False, force=False, ndeps=False, config_only=False):
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
                                                     f"Updating component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
-                      validator=YesNoValidator(), style=prompt_style) == 'y'
+                      validator=YesNoValidator()) == 'y'
         if not cont:
             return 0
 
@@ -1063,7 +1063,7 @@ def kibana(job_type, debug=False, force=False):
     if not force:  # prompt user
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
                                                     f"Updating Kibana: {job_type}. Continue [y/n]: "), (Token, " ")],
-                      validator=YesNoValidator(), style=prompt_style) == 'y'
+                      validator=YesNoValidator()) == 'y'
         if not cont:
             return 0
 

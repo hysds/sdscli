@@ -55,8 +55,7 @@ def prompt_role(roles):
                                                     roles[x]['Arn'], roles[x]['CreateDate'])))
     pt.append((Token, "\nSelect role to use for lambda execution: "))
     while True:
-        sel = int(prompt(get_prompt_tokens=lambda x: pt, style=prompt_style,
-                         validator=SelectionValidator()).strip())
+        sel = int(prompt(get_prompt_tokens=lambda x: pt,                          validator=SelectionValidator()).strip())
         try:
             return names[sel]
         except IndexError:
@@ -250,21 +249,21 @@ def create_staging_area(args, conf):
     else:
         job_type = prompt(get_prompt_tokens=lambda x:
                           [(Token, "Enter job type to submit on data staged event: ")],
-                          style=prompt_style).strip()
+                          ).strip()
     logger.debug(f"job type: {job_type}")
     if 'JOB_RELEASE' in sa_cfg:
         job_release = sa_cfg['JOB_RELEASE']
     else:
         job_release = prompt(get_prompt_tokens=lambda x:
                              [(Token, f"Enter release version for {job_type}: ")],
-                             style=prompt_style).strip()
+                             ).strip()
     logger.debug(f"job release: {job_release}")
     if 'JOB_QUEUE' in sa_cfg:
         job_queue = sa_cfg['JOB_QUEUE']
     else:
         job_queue = prompt(get_prompt_tokens=lambda x:
                            [(Token, f"Enter queue name to submit {job_type}-{job_release} jobs to: ")],
-                           style=prompt_style).strip()
+                           ).strip()
     logger.debug(f"job queue: {job_queue}")
 
     job_types = {}

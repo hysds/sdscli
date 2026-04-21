@@ -49,8 +49,7 @@ def prompt_image(images):
             (Token, ". {} - {} ({})\n".format(images[x]['Name'], x, images[x]['CreationDate'])))
     pt.append((Token, "\nSelect verdi AMI to use for launch configurations: "))
     while True:
-        sel = int(prompt(get_prompt_tokens=lambda x: pt, style=prompt_style,
-                         validator=SelectionValidator()).strip())
+        sel = int(prompt(get_prompt_tokens=lambda x: pt,                          validator=SelectionValidator()).strip())
         try:
             return ids[sel]
         except IndexError:
@@ -67,8 +66,7 @@ def prompt_keypair(keypairs):
         pt.append((Token, f". {x}\n"))
     pt.append((Token, "\nSelect key pair to use for launch configurations: "))
     while True:
-        sel = int(prompt(get_prompt_tokens=lambda x: pt, style=prompt_style,
-                         validator=SelectionValidator()).strip())
+        sel = int(prompt(get_prompt_tokens=lambda x: pt,                          validator=SelectionValidator()).strip())
         try:
             return ids[sel]
         except IndexError:
@@ -85,8 +83,7 @@ def prompt_roles(roles):
         pt.append((Token, f". {x}\n"))
     pt.append((Token, "\nSelect role to use for launch configurations: "))
     while True:
-        sel = int(prompt(get_prompt_tokens=lambda x: pt, style=prompt_style,
-                         validator=SelectionValidator()).strip())
+        sel = int(prompt(get_prompt_tokens=lambda x: pt,                          validator=SelectionValidator()).strip())
         try:
             return ids[sel]
         except IndexError:
@@ -106,8 +103,7 @@ def prompt_secgroup(sgs, desc=None):
             (Token, ". {} - {} - {}\n".format(sgs[x]['VpcId'], sgs[x]['GroupName'], x)))
     pt.append((Token, desc))
     while True:
-        sels = list(map(int, [i.strip() for i in prompt(get_prompt_tokens=lambda x: pt, style=prompt_style,
-                                                        validator=MultipleSelectionValidator()).split()]))
+        sels = list(map(int, [i.strip() for i in prompt(get_prompt_tokens=lambda x: pt,                                                         validator=MultipleSelectionValidator()).split()]))
         sgs_ids = set()
         vpc_ids = set()
         invalid = False
@@ -184,7 +180,7 @@ def create(args, conf):
         use_role = asg_cfg['USE_ROLE']
     else:
         use_role = prompt(get_prompt_tokens=lambda x: [(Token, "Do you want to use instance roles [y/n]: ")],
-                          validator=YesNoValidator(), style=prompt_style).strip() == 'y'
+                          validator=YesNoValidator()).strip() == 'y'
     logger.debug(f"use_role: {use_role} {type(use_role)}")
     if use_role:
         if 'ROLE' in asg_cfg:
@@ -233,7 +229,7 @@ def create(args, conf):
             i_list = inst.split()
             d = {'QUEUE_NAME': q_list[i], 'INSTANCE_TYPES': i_list}
             use_job_total = prompt(get_prompt_tokens=lambda x: [(Token, "Do you want to scale up based on total jobs to workers? (default is number of waiting jobs to workers) [y/n]: ")],
-                          validator=YesNoValidator(), style=prompt_style).strip() == 'y'
+                          validator=YesNoValidator()).strip() == 'y'
             if use_job_total:
                 d['TOTAL_JOBS_METRIC'] = True
             queues.append(d)

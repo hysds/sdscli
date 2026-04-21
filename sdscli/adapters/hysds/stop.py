@@ -139,7 +139,7 @@ def stop(comp, debug=False, force=False):
     if not force:
         cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
                                                     f"Stopping component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
-                      validator=YesNoValidator(), style=prompt_style) == 'y'
+                      validator=YesNoValidator()) == 'y'
         if not cont:
             return 0
 
