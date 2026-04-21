@@ -48,14 +48,12 @@ def prompt_role(roles):
     """Prompt for role to use."""
 
     names = list(roles.keys())
-    pt = [(Token, "Current roles are:\n\n")]
+    msg = "Current roles are:\n\n"
     for i, x in enumerate(names):
-        pt.append((Token.Param, f"{i}"))
-        pt.append((Token, ". {} - {} ({})\n".format(x,
-                                                    roles[x]['Arn'], roles[x]['CreateDate'])))
-    pt.append((Token, "\nSelect role to use for lambda execution: "))
+        msg += f"{i}. {x} - {roles[x]['Arn']} ({roles[x]['CreateDate']})\n"
+    msg += "\nSelect role to use for lambda execution: "
     while True:
-        sel = int(prompt(get_prompt_tokens=lambda x: pt,                          validator=SelectionValidator()).strip())
+        sel = int(prompt(msg, validator=SelectionValidator()).strip())
         try:
             return names[sel]
         except IndexError:
@@ -247,23 +245,17 @@ def create_staging_area(args, conf):
     if 'JOB_TYPE' in sa_cfg:
         job_type = sa_cfg['JOB_TYPE']
     else:
-        job_type = prompt(get_prompt_tokens=lambda x:
-                          [(Token, "Enter job type to submit on data staged event: ")],
-                          ).strip()
+        job_type = prompt("Enter job type to submit on data staged event: ").strip()
     logger.debug(f"job type: {job_type}")
     if 'JOB_RELEASE' in sa_cfg:
         job_release = sa_cfg['JOB_RELEASE']
     else:
-        job_release = prompt(get_prompt_tokens=lambda x:
-                             [(Token, f"Enter release version for {job_type}: ")],
-                             ).strip()
+        job_release = prompt(f"Enter release version for {job_type}: ").strip()
     logger.debug(f"job release: {job_release}")
     if 'JOB_QUEUE' in sa_cfg:
         job_queue = sa_cfg['JOB_QUEUE']
     else:
-        job_queue = prompt(get_prompt_tokens=lambda x:
-                           [(Token, f"Enter queue name to submit {job_type}-{job_release} jobs to: ")],
-                           ).strip()
+        job_queue = prompt(f"Enter queue name to submit {job_type}-{job_release} jobs to: ").strip()
     logger.debug(f"job queue: {job_queue}")
 
     job_types = {}

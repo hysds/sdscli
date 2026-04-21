@@ -325,13 +325,8 @@ def configure():
     # config file
     cfg_file = get_user_config_path()
     if os.path.exists(cfg_file):
-        cont = prompt(get_prompt_tokens=lambda x: [(Token, cfg_file),
-                                                   (Token, " already exists. "),
-                                                   (Token.Alert,
-                                                    "Customizations will be lost or overwritten!"),
-                                                   (Token, " Continue [y/n]: ")],
+        cont = prompt(f"{cfg_file} already exists. Customizations will be lost or overwritten! Continue [y/n]: ",
                       validator=YesNoValidator()) == 'y'
-        # validator=YesNoValidator(), default='n') == 'y'
         if not cont:
             return 0
         with open(cfg_file) as f:
@@ -341,11 +336,8 @@ def configure():
 
     # mozart
     for k, d in CFG_DEFAULTS['mozart']:
-        v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                (Token.Param, "%s" % k),
-                                                (Token, ": ")],
-                   default=str(cfg.get(k, d)),
-                   )
+        v = prompt(f"Enter value for {k}: ",
+                   default=str(cfg.get(k, d)))
         cfg[k] = v
 
     # mozart components
@@ -367,18 +359,12 @@ def configure():
                     continue
             if k == 'MOZART_RABBIT_PASSWORD':
                 while True:
-                    p1 = prompt(get_prompt_tokens=lambda x: [(Token, "Enter RabbitMQ password for user "),
-                                                             (Token.Username, "%s" %
-                                                              cfg['MOZART_RABBIT_USER']),
-                                                             (Token, ": ")],
+                    p1 = prompt(f"Enter RabbitMQ password for user {cfg['MOZART_RABBIT_USER']}: ",
                                 default=str(cfg.get(k, d)),
-                                                                is_password=True)
-                    p2 = prompt(get_prompt_tokens=lambda x: [(Token, "Re-enter RabbitMQ password for user "),
-                                                             (Token.Username, "%s" %
-                                                              cfg['MOZART_RABBIT_USER']),
-                                                             (Token, ": ")],
+                                is_password=True)
+                    p2 = prompt(f"Re-enter RabbitMQ password for user {cfg['MOZART_RABBIT_USER']}: ",
                                 default=str(cfg.get(k, d)),
-                                                                is_password=True)
+                                is_password=True)
                     if p1 == p2:
                         if p1 == "":
                             print("Password can't be empty.")
@@ -388,40 +374,31 @@ def configure():
                     print("Passwords don't match.")
             elif k == 'MOZART_REDIS_PASSWORD':
                 while True:
-                    p1 = prompt(get_prompt_tokens=lambda x: [(Token, "Enter Redis password: ")],
+                    p1 = prompt("Enter Redis password: ",
                                 default=str(cfg.get(k, d)),
-                                                                is_password=True)
-                    p2 = prompt(get_prompt_tokens=lambda x: [(Token, "Re-enter Redis password: ")],
+                                is_password=True)
+                    p2 = prompt("Re-enter Redis password: ",
                                 default=str(cfg.get(k, d)),
-                                                                is_password=True)
+                                is_password=True)
                     if p1 == p2:
                         v = p1
                         break
                     print("Passwords don't match.")
             else:
-                v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                        (Token.Param, "%s" % k),
-                                                        (Token, ": ")],
-                           default=str(cfg.get(k, d)),
-                           )
+                v = prompt(f"Enter value for {k}: ",
+                           default=str(cfg.get(k, d)))
             cfg[k] = v
 
     # ops
     for k, d in CFG_DEFAULTS['ops']:
         if k == 'OPS_PASSWORD_HASH':
             while True:
-                p1 = prompt(get_prompt_tokens=lambda x: [(Token, "Enter web interface password for ops user "),
-                                                         (Token.Username, "%s" %
-                                                          cfg['OPS_USER']),
-                                                         (Token, ": ")],
+                p1 = prompt(f"Enter web interface password for ops user {cfg['OPS_USER']}: ",
                             default="",
-                                                        is_password=True)
-                p2 = prompt(get_prompt_tokens=lambda x: [(Token, "Re-enter web interface password for ops user "),
-                                                         (Token.Username, "%s" %
-                                                          cfg['OPS_USER']),
-                                                         (Token, ": ")],
+                            is_password=True)
+                p2 = prompt(f"Re-enter web interface password for ops user {cfg['OPS_USER']}: ",
                             default="",
-                                                        is_password=True)
+                            is_password=True)
                 if p1 == p2:
                     if p1 == "":
                         print("Password can't be empty.")
@@ -430,20 +407,14 @@ def configure():
                     break
                 print("Passwords don't match.")
         else:
-            v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                    (Token.Param, "%s" % k),
-                                                    (Token, ": ")],
-                       default=str(cfg.get(k, d)),
-                       )
+            v = prompt(f"Enter value for {k}: ",
+                       default=str(cfg.get(k, d)))
         cfg[k] = v
 
     # metrics
     for k, d in CFG_DEFAULTS['metrics']:
-        v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                (Token.Param, "%s" % k),
-                                                (Token, ": ")],
-                   default=str(cfg.get(k, d)),
-                   )
+        v = prompt(f"Enter value for {k}: ",
+                   default=str(cfg.get(k, d)))
         cfg[k] = v
 
     # metrics components
@@ -464,31 +435,25 @@ def configure():
                     continue
             if k == 'METRICS_REDIS_PASSWORD':
                 while True:
-                    p1 = prompt(get_prompt_tokens=lambda x: [(Token, "Enter Redis password: ")],
+                    p1 = prompt("Enter Redis password: ",
                                 default=str(cfg.get(k, d)),
-                                                                is_password=True)
-                    p2 = prompt(get_prompt_tokens=lambda x: [(Token, "Re-enter Redis password: ")],
+                                is_password=True)
+                    p2 = prompt("Re-enter Redis password: ",
                                 default=str(cfg.get(k, d)),
-                                                                is_password=True)
+                                is_password=True)
                     if p1 == p2:
                         v = p1
                         break
                     print("Passwords don't match.")
             else:
-                v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                        (Token.Param, "%s" % k),
-                                                        (Token, ": ")],
-                           default=str(cfg.get(k, d)),
-                           )
+                v = prompt(f"Enter value for {k}: ",
+                           default=str(cfg.get(k, d)))
             cfg[k] = v
 
     # grq
     for k, d in CFG_DEFAULTS['grq']:
-        v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                (Token.Param, "%s" % k),
-                                                (Token, ": ")],
-                   default=str(cfg.get(k, d)),
-                   )
+        v = prompt(f"Enter value for {k}: ",
+                   default=str(cfg.get(k, d)))
         cfg[k] = v
 
     # grq components
@@ -507,83 +472,58 @@ def configure():
                 elif k.endswith('_FQDN'):
                     cfg[k] = cfg['GRQ_FQDN']
                     continue
-            v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                    (Token.Param, "%s" % k),
-                                                    (Token, ": ")],
-                       default=str(cfg.get(k, d)),
-                       )
+            v = prompt(f"Enter value for {k}: ",
+                       default=str(cfg.get(k, d)))
             cfg[k] = v
 
     # factotum
     for k, d in CFG_DEFAULTS['factotum']:
-        v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                (Token.Param, "%s" % k),
-                                                (Token, ": ")],
-                   default=str(cfg.get(k, d)),
-                   )
+        v = prompt(f"Enter value for {k}: ",
+                   default=str(cfg.get(k, d)))
         cfg[k] = v
 
     # ci
     for k, d in CFG_DEFAULTS['ci']:
         if k in ('JENKINS_API_KEY', 'GIT_OAUTH_TOKEN'):
             while True:
-                p1 = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                         (Token.Param, "%s" % k),
-                                                         (Token, ": ")],
+                p1 = prompt(f"Enter value for {k}: ",
                             default=str(cfg.get(k, d)),
-                                                        is_password=True)
-                p2 = prompt(get_prompt_tokens=lambda x: [(Token, "Re-enter value for "),
-                                                         (Token.Param, "%s" % k),
-                                                         (Token, ": ")],
+                            is_password=True)
+                p2 = prompt(f"Re-enter value for {k}: ",
                             default=str(cfg.get(k, d)),
-                                                        is_password=True)
+                            is_password=True)
                 if p1 == p2:
                     v = p1
                     break
                 print("Values don't match.")
         else:
-            v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                    (Token.Param, "%s" % k),
-                                                    (Token, ": ")],
-                       default=str(cfg.get(k, d)),
-                       )
+            v = prompt(f"Enter value for {k}: ",
+                       default=str(cfg.get(k, d)))
         cfg[k] = v
 
     # verdi
     for k, d in CFG_DEFAULTS['verdi']:
-        v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                (Token.Param, "%s" % k),
-                                                (Token, ": ")],
-                   default=str(cfg.get(k, d)),
-                   )
+        v = prompt(f"Enter value for {k}: ",
+                   default=str(cfg.get(k, d)))
         cfg[k] = v
 
     # webdav
     for k, d in CFG_DEFAULTS['webdav']:
         if k == 'DAV_PASSWORD':
             while True:
-                p1 = prompt(get_prompt_tokens=lambda x: [(Token, "Enter webdav password for user "),
-                                                         (Token.Username, "%s" %
-                                                          cfg['DAV_USER']),
-                                                         (Token, ": ")],
+                p1 = prompt(f"Enter webdav password for user {cfg['DAV_USER']}: ",
                             default=str(cfg.get(k, d)),
-                                                        is_password=True)
-                p2 = prompt(get_prompt_tokens=lambda x: [(Token, "Re-enter webdav password for ops user "),
-                                                         (Token.Username, "%s" %
-                                                          cfg['DAV_USER']),
-                                                         (Token, ": ")],
+                            is_password=True)
+                p2 = prompt(f"Re-enter webdav password for ops user {cfg['DAV_USER']}: ",
                             default=str(cfg.get(k, d)),
-                                                        is_password=True)
+                            is_password=True)
                 if p1 == p2:
                     v = p1
                     break
                 print("Passwords don't match.")
         else:
-            v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                    (Token.Param, "%s" % k),
-                                                    (Token, ": ")],
-                       default=str(cfg.get(k, d)),
-                       )
+            v = prompt(f"Enter value for {k}: ",
+                       default=str(cfg.get(k, d)))
         cfg[k] = v
 
     # aws-dataset
@@ -593,35 +533,22 @@ def configure():
                 cfg['DATASET_AWS_SECRET_KEY'] = ""
                 continue
             while True:
-                p1 = prompt(get_prompt_tokens=lambda x: [(Token, "Enter AWS secret key for "),
-                                                         (Token.Username, "%s" %
-                                                          cfg['DATASET_AWS_ACCESS_KEY']),
-                                                         (Token, ": ")],
+                p1 = prompt(f"Enter AWS secret key for {cfg['DATASET_AWS_ACCESS_KEY']}: ",
                             default=str(cfg.get(k, d)),
-                                                        is_password=True)
-                p2 = prompt(get_prompt_tokens=lambda x: [(Token, "Re-enter AWS secret key for "),
-                                                         (Token.Username, "%s" %
-                                                          cfg['DATASET_AWS_ACCESS_KEY']),
-                                                         (Token, ": ")],
+                            is_password=True)
+                p2 = prompt(f"Re-enter AWS secret key for {cfg['DATASET_AWS_ACCESS_KEY']}: ",
                             default=str(cfg.get(k, d)),
-                                                        is_password=True)
+                            is_password=True)
                 if p1 == p2:
                     v = p1
                     break
                 print("Keys don't match.")
         elif k == 'DATASET_AWS_ACCESS_KEY':
-            v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                    (Token.Param, "%s" % k),
-                                                    (Token, ". If using instance roles, just press enter"),
-                                                    (Token, ": ")],
-                       default=str(cfg.get(k, d)),
-                       )
+            v = prompt(f"Enter value for {k}. If using instance roles, just press enter: ",
+                       default=str(cfg.get(k, d)))
         else:
-            v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                    (Token.Param, "%s" % k),
-                                                    (Token, ": ")],
-                       default=str(cfg.get(k, d)),
-                       )
+            v = prompt(f"Enter value for {k}: ",
+                       default=str(cfg.get(k, d)))
         cfg[k] = v
 
     # aws-asg
@@ -631,35 +558,22 @@ def configure():
                 cfg['AWS_SECRET_KEY'] = ""
                 continue
             while True:
-                p1 = prompt(get_prompt_tokens=lambda x: [(Token, "Enter AWS secret key for "),
-                                                         (Token.Username, "%s" %
-                                                          cfg['AWS_ACCESS_KEY']),
-                                                         (Token, ": ")],
+                p1 = prompt(f"Enter AWS secret key for {cfg['AWS_ACCESS_KEY']}: ",
                             default=str(cfg.get(k, d)),
-                                                        is_password=True)
-                p2 = prompt(get_prompt_tokens=lambda x: [(Token, "Re-enter AWS secret key for "),
-                                                         (Token.Username, "%s" %
-                                                          cfg['AWS_ACCESS_KEY']),
-                                                         (Token, ": ")],
+                            is_password=True)
+                p2 = prompt(f"Re-enter AWS secret key for {cfg['AWS_ACCESS_KEY']}: ",
                             default=str(cfg.get(k, d)),
-                                                        is_password=True)
+                            is_password=True)
                 if p1 == p2:
                     v = p1
                     break
                 print("Keys don't match.")
         elif k == 'AWS_ACCESS_KEY':
-            v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                    (Token.Param, "%s" % k),
-                                                    (Token, ". If using instance roles, just press enter"),
-                                                    (Token, ": ")],
-                       default=str(cfg.get(k, d)),
-                       )
+            v = prompt(f"Enter value for {k}. If using instance roles, just press enter: ",
+                       default=str(cfg.get(k, d)))
         else:
-            v = prompt(get_prompt_tokens=lambda x: [(Token, "Enter value for "),
-                                                    (Token.Param, "%s" % k),
-                                                    (Token, ": ")],
-                       default=str(cfg.get(k, d)),
-                       )
+            v = prompt(f"Enter value for {k}: ",
+                       default=str(cfg.get(k, d)))
         cfg[k] = v
 
     # ensure directory exists

@@ -42,14 +42,12 @@ def prompt_image(images):
     """Prompt for image to use."""
 
     ids = list(images.keys())
-    pt = [(Token, "Current verdi AMIs are:\n\n")]
+    msg = "Current verdi AMIs are:\n\n"
     for i, x in enumerate(ids):
-        pt.append((Token.Param, f"{i}"))
-        pt.append(
-            (Token, ". {} - {} ({})\n".format(images[x]['Name'], x, images[x]['CreationDate'])))
-    pt.append((Token, "\nSelect verdi AMI to use for launch configurations: "))
+        msg += f"{i}. {images[x]['Name']} - {x} ({images[x]['CreationDate']})\n"
+    msg += "\nSelect verdi AMI to use for launch configurations: "
     while True:
-        sel = int(prompt(get_prompt_tokens=lambda x: pt,                          validator=SelectionValidator()).strip())
+        sel = int(prompt(msg, validator=SelectionValidator()).strip())
         try:
             return ids[sel]
         except IndexError:
@@ -60,13 +58,12 @@ def prompt_keypair(keypairs):
     """Prompt for key pair to use."""
 
     ids = list(keypairs.keys())
-    pt = [(Token, "Current key pairs are:\n\n")]
+    msg = "Current key pairs are:\n\n"
     for i, x in enumerate(ids):
-        pt.append((Token.Param, f"{i}"))
-        pt.append((Token, f". {x}\n"))
-    pt.append((Token, "\nSelect key pair to use for launch configurations: "))
+        msg += f"{i}. {x}\n"
+    msg += "\nSelect key pair to use for launch configurations: "
     while True:
-        sel = int(prompt(get_prompt_tokens=lambda x: pt,                          validator=SelectionValidator()).strip())
+        sel = int(prompt(msg, validator=SelectionValidator()).strip())
         try:
             return ids[sel]
         except IndexError:
@@ -77,13 +74,12 @@ def prompt_roles(roles):
     """Prompt for role to use."""
 
     ids = list(roles.keys())
-    pt = [(Token, "Current roles are:\n\n")]
+    msg = "Current roles are:\n\n"
     for i, x in enumerate(ids):
-        pt.append((Token.Param, f"{i}"))
-        pt.append((Token, f". {x}\n"))
-    pt.append((Token, "\nSelect role to use for launch configurations: "))
+        msg += f"{i}. {x}\n"
+    msg += "\nSelect role to use for launch configurations: "
     while True:
-        sel = int(prompt(get_prompt_tokens=lambda x: pt,                          validator=SelectionValidator()).strip())
+        sel = int(prompt(msg, validator=SelectionValidator()).strip())
         try:
             return ids[sel]
         except IndexError:
@@ -96,14 +92,12 @@ def prompt_secgroup(sgs, desc=None):
     if desc is None:
         desc = "\nSelect security groups to use for launch configurations (space between each selected): "
     ids = list(sgs.keys())
-    pt = [(Token, "Current security groups are:\n\n")]
+    msg = "Current security groups are:\n\n"
     for i, x in enumerate(ids):
-        pt.append((Token.Param, f"{i}"))
-        pt.append(
-            (Token, ". {} - {} - {}\n".format(sgs[x]['VpcId'], sgs[x]['GroupName'], x)))
-    pt.append((Token, desc))
+        msg += f"{i}. {sgs[x]['VpcId']} - {sgs[x]['GroupName']} - {x}\n"
+    msg += desc
     while True:
-        sels = list(map(int, [i.strip() for i in prompt(get_prompt_tokens=lambda x: pt,                                                         validator=MultipleSelectionValidator()).split()]))
+        sels = list(map(int, [i.strip() for i in prompt(msg, validator=MultipleSelectionValidator()).split()]))
         sgs_ids = set()
         vpc_ids = set()
         invalid = False
@@ -179,7 +173,7 @@ def create(args, conf):
     if 'USE_ROLE' in asg_cfg:
         use_role = asg_cfg['USE_ROLE']
     else:
-        use_role = prompt(get_prompt_tokens=lambda x: [(Token, "Do you want to use instance roles [y/n]: ")],
+        use_role = prompt("Do you want to use instance roles [y/n]: ",
                           validator=YesNoValidator()).strip() == 'y'
     logger.debug(f"use_role: {use_role} {type(use_role)}")
     if use_role:
@@ -228,7 +222,7 @@ def create(args, conf):
                 i] + ', for example: [t2.medium t3.medium t3a.medium]: ', default='t2.medium t3.medium t3a.medium')
             i_list = inst.split()
             d = {'QUEUE_NAME': q_list[i], 'INSTANCE_TYPES': i_list}
-            use_job_total = prompt(get_prompt_tokens=lambda x: [(Token, "Do you want to scale up based on total jobs to workers? (default is number of waiting jobs to workers) [y/n]: ")],
+            use_job_total = prompt("Do you want to scale up based on total jobs to workers? (default is number of waiting jobs to workers) [y/n]: ",
                           validator=YesNoValidator()).strip() == 'y'
             if use_job_total:
                 d['TOTAL_JOBS_METRIC'] = True
