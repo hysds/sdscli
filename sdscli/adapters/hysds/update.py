@@ -90,7 +90,7 @@ def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
             wrapper_src = execute(fab.get_package_resource_path, 'hysds', f'scripts/{script}',
                                   remote=True, resource_type='file', roles=[comp])
             wrapper_src_path = list(wrapper_src.values())[0]
-            execute(fab.copy, wrapper_src_path, f'~/mozart/bin/{script}', roles=[comp])
+            execute(fab.run, f'cp {wrapper_src_path} ~/mozart/bin/{script}', roles=[comp])
             execute(fab.chmod, 755, f'~/mozart/bin/{script}', roles=[comp])
         bar.update()
 
@@ -356,7 +356,7 @@ def update_metrics(conf, ndeps=False, config_only=False, comp='metrics'):
         wrapper_src = execute(fab.get_package_resource_path, 'hysds', 'scripts/log_instance_stats.sh',
                               remote=True, resource_type='file', roles=[comp])
         wrapper_src_path = list(wrapper_src.values())[0]
-        execute(fab.copy, wrapper_src_path, '~/metrics/bin/log_instance_stats.sh', roles=[comp])
+        execute(fab.run, f'cp {wrapper_src_path} ~/metrics/bin/log_instance_stats.sh', roles=[comp])
         execute(fab.chmod, 755, '~/metrics/bin/log_instance_stats.sh', roles=[comp])
         bar.update()
 
@@ -510,7 +510,7 @@ def update_grq(conf, ndeps=False, config_only=False, comp='grq'):
         wrapper_src = execute(fab.get_package_resource_path, 'hysds', 'scripts/log_instance_stats.sh',
                               remote=True, resource_type='file', roles=[comp])
         wrapper_src_path = list(wrapper_src.values())[0]
-        execute(fab.copy, wrapper_src_path, '~/sciflo/bin/log_instance_stats.sh', roles=[comp])
+        execute(fab.run, f'cp {wrapper_src_path} ~/sciflo/bin/log_instance_stats.sh', roles=[comp])
         execute(fab.chmod, 755, '~/sciflo/bin/log_instance_stats.sh', roles=[comp])
         bar.update()
 
@@ -634,7 +634,7 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
         wrapper_src = execute(fab.get_package_resource_path, 'hysds', 'scripts/log_instance_stats.sh',
                               remote=True, resource_type='file', roles=[comp])
         wrapper_src_path = list(wrapper_src.values())[0]
-        execute(fab.copy, wrapper_src_path, '~/verdi/bin/log_instance_stats.sh', roles=[comp])
+        execute(fab.run, f'cp {wrapper_src_path} ~/verdi/bin/log_instance_stats.sh', roles=[comp])
         execute(fab.chmod, 755, '~/verdi/bin/log_instance_stats.sh', roles=[comp])
         bar.update()
  
@@ -763,7 +763,7 @@ def update_verdi(conf, ndeps=False, config_only=False, comp='verdi'):
         wrapper_src = execute(fab.get_package_resource_path, 'hysds', 'scripts/log_instance_stats.sh',
                               remote=True, resource_type='file', roles=[comp])
         wrapper_src_path = list(wrapper_src.values())[0]
-        execute(fab.copy, wrapper_src_path, '~/verdi/bin/log_instance_stats.sh', roles=[comp])
+        execute(fab.run, f'cp {wrapper_src_path} ~/verdi/bin/log_instance_stats.sh', roles=[comp])
         execute(fab.chmod, 755, '~/verdi/bin/log_instance_stats.sh', roles=[comp])
         bar.update()
  
