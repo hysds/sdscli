@@ -182,8 +182,7 @@ def reset(comp, debug=False, force=False):
 
     # prompt user
     if not force:
-        cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
-                                                    f"Resetting component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
+        cont = prompt(f"Resetting component[s]: {comp}. Continue [y/n]: ",
                       validator=YesNoValidator()) == 'y'
         if not cont:
             return 0

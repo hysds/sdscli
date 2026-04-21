@@ -134,8 +134,7 @@ def start(comp, debug=False, force=False):
 
     # prompt user
     if not force:
-        cont = prompt(get_prompt_tokens=lambda x: [(Token.Alert,
-                                                    f"Starting TPS on component[s]: {comp}. Continue [y/n]: "), (Token, " ")],
+        cont = prompt(f"Starting TPS on component[s]: {comp}. Continue [y/n]: ",
                       validator=YesNoValidator()) == 'y'
         if not cont:
             return 0
