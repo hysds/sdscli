@@ -199,8 +199,8 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
     This is the master function that handles all package resource path resolution.
     
     Priority:
-    1. PyPI install: share/package/resource_path
-    2. Editable install: ops/package/resource_path
+    1. PyPI install: ~/{base}/share/package/resource_path (e.g., ~/sciflo/share/grq2/)
+    2. Editable install: ~/{base}/ops/package/resource_path (e.g., ~/sciflo/ops/grq2/)
     
     :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
     :param resource_path: Relative path to resource (e.g., 'scripts/db_create.py', 'configs/settings')
@@ -208,8 +208,6 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
     :param resource_type: 'file', 'dir', or 'auto' (auto-detect based on test results)
     :return: Full path to resource
     """
-    import sysconfig
-    
     base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
     base = base_map.get(package_name, 'mozart')
     
@@ -217,36 +215,28 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
         # Check remote host using fabric run()
         logger.debug(f'[get_package_resource_path] Called with package={package_name}, resource={resource_path}, remote=True, type={resource_type}')
         
-        # Get PyPI path from remote
-        pypi_path_cmd = f'python -c "import sysconfig, os; print(os.path.join(sysconfig.get_path(\'data\'), \'share\', \'{package_name}\', \'{resource_path}\'))"'
-        logger.debug(f'[get_package_resource_path] Running on remote: {pypi_path_cmd}')
-        pypi_path_result = run(pypi_path_cmd, warn_only=True)
-        logger.debug(f'[get_package_resource_path] Result succeeded={pypi_path_result.succeeded}, return_code={pypi_path_result.return_code}')
+        # Check PyPI path first: ~/{base}/share/{package_name}/{resource_path}
+        pypi_path = f'~/{base}/share/{package_name}/{resource_path}'
+        logger.debug(f'[get_package_resource_path] Checking PyPI path: {pypi_path}')
         
-        if pypi_path_result.succeeded:
-            pypi_path = pypi_path_result.strip()
-            logger.debug(f'[get_package_resource_path] PyPI path from remote: {pypi_path}')
-            
-            # Determine test command based on resource type
-            if resource_type == 'file':
-                test_cmd = f'test -f {pypi_path}'
-            elif resource_type == 'dir':
-                test_cmd = f'test -d {pypi_path}'
-            else:  # auto
-                # Try file first, then directory
-                test_cmd = f'test -f {pypi_path} || test -d {pypi_path}'
-            
-            logger.debug(f'[get_package_resource_path] Checking if resource exists: {test_cmd}')
-            check_result = run(test_cmd, warn_only=True)
-            logger.debug(f'[get_package_resource_path] Resource exists check succeeded={check_result.succeeded}')
-            
-            if check_result.succeeded:
-                logger.debug(f'[get_package_resource_path] Returning PyPI path: {pypi_path}')
-                return pypi_path
-            else:
-                logger.debug(f'[get_package_resource_path] Resource not found at PyPI location: {pypi_path}')
+        # Determine test command based on resource type
+        if resource_type == 'file':
+            test_cmd = f'test -f {pypi_path}'
+        elif resource_type == 'dir':
+            test_cmd = f'test -d {pypi_path}'
+        else:  # auto
+            # Try file first, then directory
+            test_cmd = f'test -f {pypi_path} || test -d {pypi_path}'
+        
+        logger.debug(f'[get_package_resource_path] Running test: {test_cmd}')
+        check_result = run(test_cmd, warn_only=True)
+        logger.debug(f'[get_package_resource_path] Resource exists check succeeded={check_result.succeeded}')
+        
+        if check_result.succeeded:
+            logger.debug(f'[get_package_resource_path] Returning PyPI path: {pypi_path}')
+            return pypi_path
         else:
-            logger.debug(f'[get_package_resource_path] Failed to get PyPI path from remote')
+            logger.debug(f'[get_package_resource_path] Resource not found at PyPI location: {pypi_path}')
         
         # Fallback to editable install location
         fallback_path = f'~/{base}/ops/{package_name}/{resource_path}'
@@ -254,7 +244,8 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
         return fallback_path
     else:
         # Check local machine
-        pypi_path = os.path.join(sysconfig.get_path('data'), 'share', package_name, resource_path)
+        # Try PyPI path first: ~/{base}/share/{package_name}/{resource_path}
+        pypi_path = os.path.expanduser(f'~/{base}/share/{package_name}/{resource_path}')
         
         # Check if resource exists based on type
         resource_exists = False
@@ -269,7 +260,7 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
             return pypi_path
         
         # Fallback to editable install location
-        editable_path = os.path.join(ops_dir, 'mozart/ops', package_name, resource_path)
+        editable_path = os.path.join(ops_dir, f'{base}/ops', package_name, resource_path)
         if os.path.exists(editable_path):
             return editable_path
         
