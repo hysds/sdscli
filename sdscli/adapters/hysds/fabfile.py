@@ -233,15 +233,19 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
         logger.debug(f'[get_package_resource_path] Resource exists check succeeded={check_result.succeeded}')
         
         if check_result.succeeded:
-            logger.debug(f'[get_package_resource_path] Returning PyPI path: {pypi_path}')
-            return pypi_path
+            # Expand $HOME to absolute path for Fabric/Jinja2 compatibility
+            expanded_path = run(f'echo {pypi_path}', quiet=True).strip()
+            logger.debug(f'[get_package_resource_path] Returning expanded PyPI path: {expanded_path}')
+            return expanded_path
         else:
             logger.debug(f'[get_package_resource_path] Resource not found at PyPI location: {pypi_path}')
         
         # Fallback to editable install location
         fallback_path = f'$HOME/{base}/ops/{package_name}/{resource_path}'
-        logger.debug(f'[get_package_resource_path] Returning fallback path: {fallback_path}')
-        return fallback_path
+        # Expand $HOME to absolute path for Fabric/Jinja2 compatibility
+        expanded_fallback = run(f'echo {fallback_path}', quiet=True).strip()
+        logger.debug(f'[get_package_resource_path] Returning expanded fallback path: {expanded_fallback}')
+        return expanded_fallback
     else:
         # Check local machine
         # Try PyPI path first: ~/{base}/share/{package_name}/{resource_path}
