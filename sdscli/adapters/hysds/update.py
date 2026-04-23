@@ -758,15 +758,15 @@ def update_verdi(conf, ndeps=False, config_only=False, comp='verdi'):
         execute(fab.send_celeryconf, 'verdi', roles=[comp])
         bar.update()
 
-        # Copy script wrappers for PyPI compatibility
-        set_bar_desc(bar, 'Installing script wrappers')
-        wrapper_src = execute(fab.get_package_resource_path, 'hysds', 'scripts/log_instance_stats.sh',
-                              remote=True, resource_type='file', roles=[comp])
-        wrapper_src_path = list(wrapper_src.values())[0]
-        execute(fab.run, f'cp {wrapper_src_path} ~/verdi/bin/log_instance_stats.sh', roles=[comp])
-        execute(fab.chmod, 755, '~/verdi/bin/log_instance_stats.sh', roles=[comp])
+        # Copy all scripts to ops/bin (will be included in code bundle)
+        set_bar_desc(bar, 'Copying scripts to ops/bin')
+        execute(fab.mkdir, '~/verdi/ops/bin', None, None, roles=[comp])
+        scripts_dir = execute(fab.get_package_resource_path, 'hysds', 'scripts',
+                              remote=True, resource_type='dir', roles=[comp])
+        scripts_dir_path = list(scripts_dir.values())[0]
+        execute(fab.run, f'cp {scripts_dir_path}/* ~/verdi/ops/bin/', roles=[comp])
+        execute(fab.chmod, 755, '~/verdi/ops/bin/*', roles=[comp])
         bar.update()
- 
 
         # update supervisor config
         set_bar_desc(bar, 'Updating supervisor config')
