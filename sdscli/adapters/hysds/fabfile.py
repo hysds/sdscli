@@ -259,8 +259,18 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
         return expanded_fallback
     else:
         # Check local machine
-        # Try PyPI path first: ~/{base}/share/{package_name}/{resource_path}
-        pypi_path = os.path.expanduser(f'~/{base}/share/{package_name}/{resource_path}')
+        # Get the virtualenv data path and extract the base directory name
+        data_path = sysconfig.get_path('data')
+        logger.debug(f'[get_package_resource_path] Local data path: {data_path}')
+        
+        # Extract base directory name (e.g., 'mozart', 'grq', 'metrics', 'verdi')
+        # Map 'grq' virtualenv to 'sciflo' home directory
+        venv_base = data_path.rstrip('/').split('/')[-1]
+        home_base = 'sciflo' if venv_base == 'grq' else venv_base
+        logger.debug(f'[get_package_resource_path] Local virtualenv base: {venv_base}, Home base: {home_base}')
+        
+        # Try PyPI path first: ~/{home_base}/share/{package_name}/{resource_path}
+        pypi_path = os.path.expanduser(f'~/{home_base}/share/{package_name}/{resource_path}')
         
         # Check if resource exists based on type
         resource_exists = False
@@ -275,7 +285,7 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
             return pypi_path
         
         # Fallback to editable install location
-        editable_path = os.path.join(ops_dir, f'{base}/ops', package_name, resource_path)
+        editable_path = os.path.join(ops_dir, f'{home_base}/ops', package_name, resource_path)
         if os.path.exists(editable_path):
             return editable_path
         
