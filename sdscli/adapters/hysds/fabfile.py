@@ -199,8 +199,8 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
     This is the master function that handles all package resource path resolution.
     
     Priority:
-    1. PyPI install: ~/{base}/share/package/resource_path (e.g., ~/sciflo/share/grq2/)
-    2. Editable install: ~/{base}/ops/package/resource_path (e.g., ~/sciflo/ops/grq2/)
+    1. PyPI install: Uses sysconfig to find virtualenv, then maps to home directory
+    2. Editable install: ops/package/resource_path
     
     :param package_name: Package name (e.g., 'hysds', 'grq2', 'mozart')
     :param resource_path: Relative path to resource (e.g., 'scripts/db_create.py', 'configs/settings')
@@ -208,15 +208,26 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
     :param resource_type: 'file', 'dir', or 'auto' (auto-detect based on test results)
     :return: Full path to resource
     """
-    base_map = {'hysds': 'mozart', 'grq2': 'sciflo', 'pele': 'sciflo', 'mozart': 'mozart'}
-    base = base_map.get(package_name, 'mozart')
+    import sysconfig
     
     if remote:
         # Check remote host using fabric run()
         logger.debug(f'[get_package_resource_path] Called with package={package_name}, resource={resource_path}, remote=True, type={resource_type}')
         
-        # Check PyPI path first: $HOME/{base}/share/{package_name}/{resource_path}
-        pypi_path = f'$HOME/{base}/share/{package_name}/{resource_path}'
+        # Get the virtualenv data path and extract the base directory name
+        data_path_cmd = 'python -c "import sysconfig; print(sysconfig.get_path(\'data\'))"'
+        data_path_result = run(data_path_cmd, quiet=True)
+        data_path = data_path_result.strip()
+        logger.debug(f'[get_package_resource_path] Remote data path: {data_path}')
+        
+        # Extract base directory name (e.g., 'mozart', 'grq', 'metrics', 'verdi')
+        # Map 'grq' virtualenv to 'sciflo' home directory
+        venv_base = data_path.rstrip('/').split('/')[-1]
+        home_base = 'sciflo' if venv_base == 'grq' else venv_base
+        logger.debug(f'[get_package_resource_path] Virtualenv base: {venv_base}, Home base: {home_base}')
+        
+        # Check PyPI path first: $HOME/{home_base}/share/{package_name}/{resource_path}
+        pypi_path = f'$HOME/{home_base}/share/{package_name}/{resource_path}'
         logger.debug(f'[get_package_resource_path] Checking PyPI path: {pypi_path}')
         
         # Determine test command based on resource type
@@ -241,7 +252,7 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
             logger.debug(f'[get_package_resource_path] Resource not found at PyPI location: {pypi_path}')
         
         # Fallback to editable install location
-        fallback_path = f'$HOME/{base}/ops/{package_name}/{resource_path}'
+        fallback_path = f'$HOME/{home_base}/ops/{package_name}/{resource_path}'
         # Expand $HOME to absolute path for Fabric/Jinja2 compatibility
         expanded_fallback = run(f'echo {fallback_path}', quiet=True).strip()
         logger.debug(f'[get_package_resource_path] Returning expanded fallback path: {expanded_fallback}')
