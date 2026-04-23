@@ -85,7 +85,7 @@ def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
 
         # Copy script wrappers for PyPI compatibility
         set_bar_desc(bar, 'Installing script wrappers')
-        for script in ['log_instance_stats.sh', 'process_events.sh', 'watchdog_job_timeouts.sh', 
+        for script in ['log_instance_stats.sh', 'ingest_dataset.sh', 'process_events.sh', 'watchdog_job_timeouts.sh', 
                 'watchdog_task_timeouts.sh', 'watchdog_worker_timeouts.sh']:
             wrapper_src = execute(fab.get_package_resource_path, 'hysds', f'scripts/{script}',
                                   remote=True, resource_type='file', roles=[comp])
