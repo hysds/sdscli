@@ -215,8 +215,8 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
         # Check remote host using fabric run()
         logger.debug(f'[get_package_resource_path] Called with package={package_name}, resource={resource_path}, remote=True, type={resource_type}')
         
-        # Check PyPI path first: ~/{base}/share/{package_name}/{resource_path}
-        pypi_path = f'~/{base}/share/{package_name}/{resource_path}'
+        # Check PyPI path first: $HOME/{base}/share/{package_name}/{resource_path}
+        pypi_path = f'$HOME/{base}/share/{package_name}/{resource_path}'
         logger.debug(f'[get_package_resource_path] Checking PyPI path: {pypi_path}')
         
         # Determine test command based on resource type
@@ -239,7 +239,7 @@ def get_package_resource_path(package_name, resource_path, remote=False, resourc
             logger.debug(f'[get_package_resource_path] Resource not found at PyPI location: {pypi_path}')
         
         # Fallback to editable install location
-        fallback_path = f'~/{base}/ops/{package_name}/{resource_path}'
+        fallback_path = f'$HOME/{base}/ops/{package_name}/{resource_path}'
         logger.debug(f'[get_package_resource_path] Returning fallback path: {fallback_path}')
         return fallback_path
     else:
