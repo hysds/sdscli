@@ -80,8 +80,8 @@ def export(args):
             cont_info['urls'] = json.dumps(updated_urls)
         except (json.JSONDecodeError, AttributeError) as e:
             logger.error(f"Failed to parse urls field: {e}")
-    elif cont_info.get('url', None) != None:
-        # Legacy single-arch container
+    if cont_info.get('url', None) != None:
+        # Legacy single-arch container or backwards compatibility for multi-arch
         get(cont_info['url'], export_dir)
         cont_info['url'] = os.path.basename(cont_info['url'])
 
@@ -290,8 +290,8 @@ def import_pkg(args):
             cont_info['urls'] = json.dumps(updated_urls)
         except (json.JSONDecodeError, AttributeError) as e:
             logger.error(f"Failed to parse urls field: {e}")
-    elif cont_info.get('url', None) != None:
-        # Legacy single-arch container
+    if cont_info.get('url', None) != None:
+        # Legacy single-arch container or backwards compatibility for multi-arch
         cont_image = os.path.join(export_dir, cont_info['url'])
         cont_info['url'] = "{}/{}".format(code_bucket_url, cont_info['url'])
         put(cont_image, cont_info['url'])
