@@ -468,6 +468,15 @@ def ensure_venv(hysds_dir, update_bash_profile=True, system_site_packages=True, 
             run('pip install -U pip')
             # HC-568: Need to pin setuptools for now
             run('pip install -U "setuptools<80.0.0"')
+            # This venv is created with --system-site-packages, so it inherits
+            # conda's numpy and contourpy. conda installs an unpinned cartopy
+            # whose current build pulls numpy 2.x and contourpy 1.4.0. numpy 2.0
+            # removed np.float_, which the pinned elasticsearch 7.13.x client
+            # references at import time, so every component that imports
+            # hysds.es_util fails to load. Pin BOTH: pinning numpy alone does not
+            # hold, because the inherited contourpy 1.4.0 requires numpy>=2.0 and
+            # pip re-upgrades numpy while resolving the component installs.
+            run('pip install -U "numpy<2.0" "contourpy<1.4.0"')
             if install_supervisor:
                 run('pip install supervisor')
     mkdir('%s/etc' % hysds_dir,
