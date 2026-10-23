@@ -391,22 +391,49 @@ def rm(args):
     cont_info = cont_info['_source']
     logger.debug(f"cont_info: {json.dumps(cont_info, indent=2)}")
 
-    # Delete all architecture-specific containers if urls field exists
+    # Collect container URLs: multi-arch urls field, falling back to legacy url field
+    urls = []
+    unparsable = False
     if cont_info.get('urls'):
         try:
-            urls_dict = json.loads(cont_info['urls'])
-            # Get unique URLs (avoid deleting same URL multiple times)
-            unique_urls = set(urls_dict.values())
-            for url in unique_urls:
-                logger.info(f"Deleting container: {url}")
-                rmall(url)  # delete container from code bucket and ES
+            # unique URLs (avoid deleting same URL multiple times)
+            urls = sorted(set(json.loads(cont_info['urls']).values()))
         except (json.JSONDecodeError, AttributeError) as e:
             logger.error(f"Failed to parse urls field: {e}")
-    # Fallback to legacy url field for backward compatibility
+            unparsable = True
     elif cont_info.get('url'):
-        rmall(cont_info['url'])  # delete container from code bucket and ES
+        urls = [cont_info['url']]
     else:
-        logger.info(f"No container URLs found, skipping deletion from code bucket")
+        logger.info("No container URLs found, skipping deletion from code bucket")
+
+    keep_hint = ("To remove only this package's index entries and leave the tarball(s) "
+                 "in place, rerun with --keep-tarball.")
+    if args.keep_tarball:
+        for url in urls:
+            logger.info(f"Keeping container tarball: {url}")
+        urls = []
+    elif unparsable:
+        logger.error(f"Cannot verify where the container tarball(s) live. Refusing to delete. {keep_hint}")
+        return 1
+    elif urls:
+        # Refuse to delete anything outside this cluster's code bucket (e.g. a containers
+        # index restored from another cluster). Validate every URL before deleting so a
+        # refusal never leaves a partially removed package.
+        conf = SettingsConf()
+        code_bucket_url = "s3://{}/{}/".format(conf.get('S3_ENDPOINT'), conf.get('CODE_BUCKET'))
+        foreign_urls = [url for url in urls if not url.startswith(code_bucket_url)]
+        if foreign_urls:
+            for url in foreign_urls:
+                logger.error(
+                    f"Container URL '{url}' does not belong to this cluster's "
+                    f"code bucket '{code_bucket_url}'."
+                )
+            logger.error(f"Refusing to delete. {keep_hint}")
+            return 1
+
+    for url in urls:
+        logger.info(f"Deleting container: {url}")
+        rmall(url)
 
     deleted_container = mozart_es.delete_by_id(index=CONTAINERS_INDEX, id=cont_info['id'])
     logger.debug(deleted_container)

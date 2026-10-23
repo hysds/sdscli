@@ -166,7 +166,7 @@ def pkg(args):
     func = get_adapter_func(
         sds_type, 'pkg', 'import_pkg' if args.subparser == 'import' else args.subparser)
     logger.debug("func: %s" % func)
-    func(args)
+    return func(args)
 
 
 def cloud(args):
@@ -407,6 +407,12 @@ def main():
     parser_pkg_rm = parser_pkg_subparsers.add_parser(
         'rm', help="remove SDS package")
     parser_pkg_rm.add_argument('id', help='SDS package id to remove')
+    parser_pkg_rm.add_argument(
+        '--keep-tarball', action='store_true',
+        help="Remove only the package's container, job_spec and hysds_io index "
+             "entries; leave the container tarball(s) in S3 (e.g. for a package "
+             "whose URL is not in this cluster's configured CODE_BUCKET)"
+    )
     parser_pkg.set_defaults(func=pkg)
 
     # parser for cloud
