@@ -13,8 +13,11 @@ from argparse import Namespace
 from sdscli.adapters.hysds import pkg
 
 ENDPOINT = "s3-us-west-2.amazonaws.com"
-OWN = f"s3://{ENDPOINT}/nisar-ops-cc-pop1"
+CODE_BUCKET = "nisar-ops-cc-pop1"
+OWN = f"s3://{ENDPOINT}/{CODE_BUCKET}"
 FOREIGN = f"s3://{ENDPOINT}/nisar-ops-cc-blue"
+# osaka's endpoint table (botocore), pinned so results don't depend on the installed version
+REGION_INFO = ({"us-west-2": "s3.us-west-2.amazonaws.com", "us-east-1": "s3.amazonaws.com"}, "us-west-2")
 TARBALL = "container-iems-sds_nisar-pcm:pcm_r05.01.2_pge_r05.01.2-1.tar.gz"
 CONT_ID = "container-iems-sds_nisar-pcm:pcm_r05.01.2_pge_r05.01.2-1"
 
@@ -43,8 +46,11 @@ class TestPkgRm(unittest.TestCase):
         conf_patcher = umock.patch.object(pkg, "SettingsConf")
         conf = conf_patcher.start()
         self.addCleanup(conf_patcher.stop)
-        conf.return_value.get.side_effect = {
-            "S3_ENDPOINT": ENDPOINT, "CODE_BUCKET": "nisar-ops-cc-pop1"}.get
+        conf.return_value.get.side_effect = {"CODE_BUCKET": CODE_BUCKET}.get
+
+        region_patcher = umock.patch.object(pkg, "get_region_info", return_value=REGION_INFO)
+        region_patcher.start()
+        self.addCleanup(region_patcher.stop)
 
     def rm(self, cont, keep_tarball=False):
         self.es.get_by_id.return_value = cont
@@ -80,8 +86,40 @@ class TestPkgRm(unittest.TestCase):
     def test_bucket_name_prefix_is_not_a_match(self):
         self.assert_refused(self.rm(container(url=f"{OWN}-old/{TARBALL}")))
 
-    def test_bucket_first_url_refused(self):
-        self.assert_refused(self.rm(container(url=f"s3://nisar-ops-cc-pop1/{TARBALL}")))
+    def assert_deleted(self, url):
+        self.assertIsNone(self.rm(container(url=url)))
+        self.rmall.assert_called_once_with(url)
+        self.assert_docs_removed()
+
+    def test_short_form_own_bucket_deleted(self):
+        """s3://<CODE_BUCKET>/<key>: how `sds ci add_job --pipeline` registers containers."""
+        self.assert_deleted(f"s3://{CODE_BUCKET}/{TARBALL}")
+
+    def test_short_form_foreign_bucket_refused(self):
+        self.assert_refused(self.rm(container(url=f"s3://nisar-ops-cc-blue/{TARBALL}")))
+
+    def test_s3s_own_bucket_deleted(self):
+        self.assert_deleted(f"s3s://{ENDPOINT}/{CODE_BUCKET}/{TARBALL}")
+
+    def test_endpoint_spellings_deleted(self):
+        for host in ("s3.us-west-2.amazonaws.com", "S3-US-WEST-2.AMAZONAWS.COM", f"{ENDPOINT}:443"):
+            with self.subTest(host=host):
+                self.rmall.reset_mock()
+                self.es.delete_by_id.reset_mock()
+                self.assert_deleted(f"s3://{host}/{CODE_BUCKET}/{TARBALL}")
+
+    def test_bucket_root_and_folder_refused(self):
+        """osaka deletes recursively, so these would empty the code bucket (or a folder of it)."""
+        for url in (OWN, f"{OWN}/", f"s3://{CODE_BUCKET}", f"s3://{CODE_BUCKET}/", f"{OWN}/containers/"):
+            with self.subTest(url=url):
+                self.assert_refused(self.rm(container(url=url)))
+
+    def test_code_bucket_as_path_under_unknown_host_refused(self):
+        """osaka reads other-bucket as the bucket here, so this would delete from other-bucket."""
+        self.assert_refused(self.rm(container(url=f"s3://other-bucket/{CODE_BUCKET}/{TARBALL}")))
+
+    def test_non_s3_scheme_refused(self):
+        self.assert_refused(self.rm(container(url=f"gs://storage.googleapis.com/{CODE_BUCKET}/{TARBALL}")))
 
     def test_malformed_urls_refused(self):
         self.assert_refused(self.rm(container(urls="{not json", url=f"{OWN}/{TARBALL}")))

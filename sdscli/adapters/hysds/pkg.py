@@ -4,15 +4,19 @@ from future import standard_library
 standard_library.install_aliases()
 
 import os
+import re
 import json
 import tarfile
 import shutil
+from urllib.parse import urlparse
 
 from sdscli.log_utils import logger
 from sdscli.conf_utils import get_user_files_path, SettingsConf
 from sdscli.os_utils import validate_dir, normpath
 
 from osaka.main import get, put, rmall
+from osaka.storage.s3 import get_region_info
+from osaka.utils import get_s3_container_and_path
 from hysds.es_util import get_mozart_es
 from hysds.utils import datetime_iso_naive
 
@@ -379,6 +383,31 @@ def import_pkg(args):
     shutil.rmtree(export_dir)  # remove package dir
 
 
+def code_bucket_problem(url, code_bucket):
+    """Return why a container URL must not be deleted, or None if it is a file in code_bucket.
+
+    Bucket and key are parsed the way osaka parses them when rmall() runs, so the check
+    and the delete agree: s3/s3s, endpoint form s3://<S3 endpoint>/<bucket>/<key> or
+    short form s3://<bucket>/<key>.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ('s3', 's3s'):
+        return f"unsupported scheme '{parsed.scheme}'"
+    host = parsed.hostname or ''
+    # same endpoint test as osaka.storage.s3.S3.connect(); any other host is a bucket
+    endpoint_form = any(re.search(ep, host) for ep in get_region_info()[0].values())
+    try:
+        bucket, key = get_s3_container_and_path(url, is_nominal_style=not endpoint_form)
+    except IndexError:  # short form with no path, e.g. s3://<bucket>
+        bucket, key = host, ''
+    if bucket != code_bucket:
+        return f"bucket '{bucket}' is not this cluster's code bucket '{code_bucket}'"
+    if not key or key.endswith('/'):
+        # osaka deletes recursively: an empty key empties the whole bucket
+        return "points at the code bucket root or a folder, not a tarball"
+    return None
+
+
 def rm(args):
     """Remove HySDS package."""
     cont_id = args.id  # container id
@@ -419,15 +448,12 @@ def rm(args):
         # Refuse to delete anything outside this cluster's code bucket (e.g. a containers
         # index restored from another cluster). Validate every URL before deleting so a
         # refusal never leaves a partially removed package.
-        conf = SettingsConf()
-        code_bucket_url = "s3://{}/{}/".format(conf.get('S3_ENDPOINT'), conf.get('CODE_BUCKET'))
-        foreign_urls = [url for url in urls if not url.startswith(code_bucket_url)]
-        if foreign_urls:
-            for url in foreign_urls:
-                logger.error(
-                    f"Container URL '{url}' does not belong to this cluster's "
-                    f"code bucket '{code_bucket_url}'."
-                )
+        code_bucket = SettingsConf().get('CODE_BUCKET')
+        problems = [(url, code_bucket_problem(url, code_bucket)) for url in urls]
+        problems = [(url, problem) for url, problem in problems if problem]
+        if problems:
+            for url, problem in problems:
+                logger.error(f"Container URL '{url}': {problem}.")
             logger.error(f"Refusing to delete. {keep_hint}")
             return 1
 
