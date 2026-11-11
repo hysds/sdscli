@@ -48,6 +48,25 @@
             "text_fields"
           ]
         },
+        "workflow": {
+          "properties": {
+            "run_id": {
+              "type": "keyword"
+            },
+            "step_id": {
+              "type": "keyword"
+            },
+            "spec_id": {
+              "type": "keyword"
+            },
+            "child_index": {
+              "type": "integer"
+            },
+            "child_total": {
+              "type": "integer"
+            }
+          }
+        },
         "job": {
           "properties": {
             "retry_count": {
@@ -104,6 +123,23 @@
             },
             "job_info": {
               "properties": {
+                "workflow_outputs": {
+                  "type": "nested",
+                  "properties": {
+                    "name": {
+                      "type": "keyword"
+                    },
+                    "value_s": {
+                      "type": "keyword"
+                    },
+                    "value_d": {
+                      "type": "double"
+                    },
+                    "value_b": {
+                      "type": "boolean"
+                    }
+                  }
+                },
                 "context": {
                   "type": "object",
                   "enabled": false
