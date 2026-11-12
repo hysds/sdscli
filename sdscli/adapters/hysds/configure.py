@@ -139,6 +139,9 @@ VERDI_PRIMER_IMAGE: {VERDI_PRIMER_IMAGE}
 VERDI_TAG: {VERDI_TAG}
 VERDI_UID: {VERDI_UID}
 VERDI_GID: {VERDI_GID}
+# (optional) directory under OPS_HOME where mozart stages the autoscale worker code/config
+# bundle; defaults to verdi. Set it when factotum shares the mozart host (single machine deployment).
+#WORKER_STAGING_DIR: verdi
 VENUE: {VENUE}
 QUEUES:
   - QUEUE_NAME: dumby-job_worker-small

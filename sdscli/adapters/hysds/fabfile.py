@@ -118,6 +118,11 @@ env.timeout = 60
 # define ops home directory
 ops_dir = context['OPS_HOME']
 
+# directory, relative to OPS_HOME, where mozart stages the code/config bundle shipped to
+# autoscaling verdi workers; override when another component (e.g. factotum on a single
+# machine deployment) already uses ~/verdi
+worker_staging_dir = context.get('WORKER_STAGING_DIR') or 'verdi'
+
 
 ##########################
 # general functions
@@ -281,8 +286,8 @@ def send_template_user_override(tmpl, dest, tmpl_dir=None, node_type=None):
                     template_dir=resolve_files_dir(tmpl, tmpl_dir))
 
 
-def set_spyddder_settings():
-    upload_template('settings.json.tmpl', '~/verdi/ops/spyddder-man/settings.json', use_jinja=True,
+def set_spyddder_settings(dir_path='verdi'):
+    upload_template('settings.json.tmpl', '~/%s/ops/spyddder-man/settings.json' % dir_path, use_jinja=True,
                     context=get_context(), template_dir=os.path.join(ops_dir, 'mozart/ops/spyddder-man'))
 
 
@@ -712,19 +717,23 @@ def metricsd_stop():
 ##########################
 
 def kill_hung():
+    # skip processes run from another component's install dir: when components share a host
+    # (single machine deployment), e.g. mozart's sync_ec2_target_tracking_metric-<queue>-job_worker-*
+    # monitors also match "job_worker"
+    skip_other_comps = 'grep -v -e "$HOME/mozart/" -e "$HOME/sciflo/" -e "$HOME/metrics/"'
     try:
         run(
-            'ps x | grep [j]ob_worker | awk \'{print $1}\' | xargs kill -TERM', quiet=True)
+            'ps x | grep [j]ob_worker | %s | awk \'{print $1}\' | xargs kill -TERM' % skip_other_comps, quiet=True)
     except:
         pass
     try:
         run(
-            'ps x | grep [s]flExec | awk \'{print $1}\' | xargs kill -TERM', quiet=True)
+            'ps x | grep [s]flExec | %s | awk \'{print $1}\' | xargs kill -TERM' % skip_other_comps, quiet=True)
     except:
         pass
     try:
         run(
-            'ps x | grep [s]flExec | awk \'{print $1}\' | xargs kill -KILL', quiet=True)
+            'ps x | grep [s]flExec | %s | awk \'{print $1}\' | xargs kill -KILL' % skip_other_comps, quiet=True)
     except:
         pass
     ps_x()
@@ -940,17 +949,18 @@ def send_shipper_conf(node_type, log_dir, cluster_jobs, redis_ip_job_status,
         send_template("watch_systemd_services.py", "~/sciflo/bin/watch_systemd_services.py")
         run("chmod 755 ~/sciflo/bin/watch_systemd_services.py")
     elif node_type in ('verdi', 'verdi-asg', 'factotum'):
-        upload_template('sdswatch_client.conf', '~/verdi/etc/sdswatch_client.conf', use_jinja=True,
+        verdi_dir = worker_staging_dir if node_type == 'verdi-asg' else 'verdi'
+        upload_template('sdswatch_client.conf', f'~/{verdi_dir}/etc/sdswatch_client.conf', use_jinja=True,
                         context=ctx, template_dir=os.path.join(ops_dir, 'mozart/ops/hysds/configs/logstash'))
         if metrics_es_engine == "opensearch":
-            send_template("run_sdswatch_client_opensearch.sh", "~/verdi/bin/run_sdswatch_client.sh")
+            send_template("run_sdswatch_client_opensearch.sh", f"~/{verdi_dir}/bin/run_sdswatch_client.sh")
         else:
-            send_template("run_sdswatch_client.sh", "~/verdi/bin/run_sdswatch_client.sh")
-        run("chmod 755 ~/verdi/bin/run_sdswatch_client.sh")
-        send_template("watch_supervisord_services.py", "~/verdi/bin/watch_supervisord_services.py")
-        run("chmod 755 ~/verdi/bin/watch_supervisord_services.py")
-        send_template("watch_systemd_services.py", "~/verdi/bin/watch_systemd_services.py")
-        run("chmod 755 ~/verdi/bin/watch_systemd_services.py")
+            send_template("run_sdswatch_client.sh", f"~/{verdi_dir}/bin/run_sdswatch_client.sh")
+        run(f"chmod 755 ~/{verdi_dir}/bin/run_sdswatch_client.sh")
+        send_template("watch_supervisord_services.py", f"~/{verdi_dir}/bin/watch_supervisord_services.py")
+        run(f"chmod 755 ~/{verdi_dir}/bin/watch_supervisord_services.py")
+        send_template("watch_systemd_services.py", f"~/{verdi_dir}/bin/watch_systemd_services.py")
+        run(f"chmod 755 ~/{verdi_dir}/bin/watch_systemd_services.py")
     else:
         raise RuntimeError("Unknown node type: %s" % node_type)
 
@@ -977,8 +987,10 @@ def send_celeryconf(node_type):
         base_dir = "mozart"
     elif node_type == 'metrics':
         base_dir = "metrics"
-    elif node_type in ('verdi', 'verdi-asg'):
+    elif node_type == 'verdi':
         base_dir = "verdi"
+    elif node_type == 'verdi-asg':
+        base_dir = worker_staging_dir
     elif node_type == 'grq':
         base_dir = "sciflo"
     else:
@@ -1085,8 +1097,9 @@ def send_hysds_scripts(node_type):
         send_template("run_docker_registry.sh", "~/sciflo/bin/run_docker_registry.sh")
         run("chmod 755 ~/sciflo/bin/run_docker_registry.sh")
     elif node_type in ('verdi', 'verdi-asg', 'factotum'):
-        send_template("run_docker_registry.sh", "~/verdi/bin/run_docker_registry.sh")
-        run("chmod 755 ~/verdi/bin/run_docker_registry.sh")
+        verdi_dir = worker_staging_dir if node_type == 'verdi-asg' else 'verdi'
+        send_template("run_docker_registry.sh", f"~/{verdi_dir}/bin/run_docker_registry.sh")
+        run(f"chmod 755 ~/{verdi_dir}/bin/run_docker_registry.sh")
     else:
         raise RuntimeError("Unknown node type: %s" % node_type)
 
@@ -1179,14 +1192,14 @@ def send_awscreds(suffix=None):
 ##########################
 # ship verdi code bundle
 ##########################
-def send_queue_config(queue):
+def send_queue_config(queue, dir_path='verdi'):
     ctx = get_context()
     ctx.update({'queue': queue})
-    upload_template('install.sh', '~/verdi/ops/install.sh', use_jinja=True, context=ctx,
+    upload_template('install.sh', '~/%s/ops/install.sh' % dir_path, use_jinja=True, context=ctx,
                     template_dir=get_user_files_path())
-    upload_template('datasets.json.tmpl.asg', '~/verdi/etc/datasets.json',
+    upload_template('datasets.json.tmpl.asg', '~/%s/etc/datasets.json' % dir_path,
                     use_jinja=True, context=ctx, template_dir=get_user_files_path())
-    upload_template('supervisord.conf.tmpl', '~/verdi/etc/supervisord.conf.tmpl',
+    upload_template('supervisord.conf.tmpl', '~/%s/etc/supervisord.conf.tmpl' % dir_path,
                     use_jinja=True, context=ctx, template_dir=get_user_files_path())
 
 
