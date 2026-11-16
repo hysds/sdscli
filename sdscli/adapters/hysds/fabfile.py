@@ -544,7 +544,8 @@ def install_mozart_es_templates():
         "job_status.template",
         "worker_status.template",
         "task_status.template",
-        "event_status.template"
+        "event_status.template",
+        "workflow_status.template"
     ]
     target_dir = f"{ops_dir}/mozart/etc"
     for template in templates:

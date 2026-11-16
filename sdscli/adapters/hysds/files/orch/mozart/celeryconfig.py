@@ -81,6 +81,8 @@ USER_RULES_TRIGGER_QUEUE = "user_rules_trigger"
 
 REDIS_JOB_STATUS_URL = "redis://:{{ MOZART_REDIS_PASSWORD }}@mozart-redis"
 REDIS_JOB_STATUS_KEY = "logstash"
+# workflow run snapshots share the "logstash" list; log an error (never drop) above this length
+WORKFLOW_LOGSTASH_MAX_LEN = 100000
 REDIS_JOB_INFO_URL = "redis://:{{ METRICS_REDIS_PASSWORD }}@{{ METRICS_REDIS_PVT_IP }}"
 REDIS_JOB_INFO_KEY = "logstash"
 REDIS_INSTANCE_METRICS_URL = "redis://:{{ METRICS_REDIS_PASSWORD }}@{{ METRICS_REDIS_PVT_IP }}"
