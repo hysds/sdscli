@@ -58,7 +58,9 @@ def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
             bar.update()
             execute(fab.pip_install_with_req, 'mozart', '~/mozart/ops/chimera', ndeps, roles=[comp])
             bar.update()
-            execute(fab.pip_install_with_req, 'mozart', '~/mozart/ops/mozart', ndeps, roles=[comp])
+            # workflows opt-in: only mozart gets the [workflows] extra
+            mozart_extras = 'workflows' if conf.cfg.get('WORKFLOWS_ENABLED') else None
+            execute(fab.pip_install_with_req, 'mozart', '~/mozart/ops/mozart', ndeps, mozart_extras, roles=[comp])
             bar.update()
             execute(fab.npm_install_package_json, '~/mozart/ops/hysds_ui', roles=[comp])
             bar.update()

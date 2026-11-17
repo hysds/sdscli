@@ -785,16 +785,18 @@ def pip_install_with_req(node_type, dest):
             run('pip install -e .')
 
 
-def pip_install_with_req(node_type, dest, ndeps):
+def pip_install_with_req(node_type, dest, ndeps, extras=None):
+    # extras: optional pip extras to install, e.g. 'workflows' -> pip install -e .[workflows]
+    target = '.[%s]' % extras if extras else '.'
     with prefix('source ~/%s/bin/activate' % node_type):
         with cd(dest):
             if ndeps:
                 logger.debug("ndeps is set, so running pip with --no-deps")
-                run('pip install --no-deps -e .')
+                run('pip install --no-deps -e %s' % target)
             else:
                 logger.debug(
                     "ndeps is NOT set, so running pip without --no-deps")
-                run('pip install -e .')
+                run('pip install -e %s' % target)
 
 
 def python_setup_develop(node_type, dest):

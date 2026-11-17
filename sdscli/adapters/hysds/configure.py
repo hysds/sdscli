@@ -140,6 +140,8 @@ VERDI_TAG: {VERDI_TAG}
 VERDI_UID: {VERDI_UID}
 VERDI_GID: {VERDI_GID}
 VENUE: {VENUE}
+# enable HySDS workflows: starts workflow_rules and the workflow reaper on mozart and installs mozart[workflows]
+WORKFLOWS_ENABLED: false
 QUEUES:
   - QUEUE_NAME: dumby-job_worker-small
     INSTANCE_TYPES:
