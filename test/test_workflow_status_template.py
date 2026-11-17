@@ -21,7 +21,7 @@ def test_template_shape():
     props = t["template"]["mappings"]["properties"]
     assert props["run_id"]["type"] == "keyword"
     assert props["version"]["type"] == "long"
-    assert props["nodes"]["enabled"] is False
+    assert props["steps"]["enabled"] is False and props["job_definitions"]["enabled"] is False
 
 
 def test_ism_policy_covers_daily_indices():
