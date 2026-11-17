@@ -32,3 +32,13 @@ def test_workflow_outputs_nested_typed_slots():
         "value_d": "double",
         "value_b": "boolean",
     }
+
+
+def test_error_class_keyword():
+    # hysds v2 stamps error_class on every job-failed/job-offline doc, top level and in
+    # job.job_info; map it explicitly so it is never dynamically mapped as text.
+    props = _props()
+    job_info = props["job"]["properties"]["job_info"]["properties"]
+    for field in (props["error_class"], job_info["error_class"]):
+        assert field["type"] == "keyword"
+        assert "fields" not in field

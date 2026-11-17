@@ -178,6 +178,13 @@
                 "time_start": {
                   "type": "date"
                 },
+                "error_class": {
+                  "type": "keyword",
+                  "ignore_above": 256,
+                  "copy_to": [
+                    "text_fields"
+                  ]
+                },
                 "error_queue": {
                   "type": "keyword",
                   "ignore_above": 256,
@@ -679,6 +686,13 @@
               "ignore_above": 256
             }
           },
+          "copy_to": [
+            "text_fields"
+          ]
+        },
+        "error_class": {
+          "type": "keyword",
+          "ignore_above": 256,
           "copy_to": [
             "text_fields"
           ]
