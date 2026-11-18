@@ -41,7 +41,7 @@ def _shim_prompt_toolkit():
 
 _shim_prompt_toolkit()
 fab = _import_fabfile()
-from sdscli.adapters.hysds import start, status, stop, update  # noqa: E402
+from sdscli.adapters.hysds import reset, start, status, stop, update  # noqa: E402
 
 
 class SingleMachineCase(unittest.TestCase):
@@ -90,12 +90,40 @@ class TestFindConflicts(unittest.TestCase):
         self.assertTrue(all("shared section" in p for p in problems))
 
 
+class TestProgramsGroup(unittest.TestCase):
+
+    def test_lists_every_program(self):
+        text = "[program:a]\nx=1\n\n[program:b-c]\n[program:d]\n"
+        self.assertEqual(fab.programs_group("grq", text), "\n[group:grq]\nprograms=a,b-c,d\n")
+
+    def test_leaves_an_existing_group_alone(self):
+        self.assertEqual(fab.programs_group("grq", "[program:a]\n[group:grq]\nprograms=a\n"), "")
+
+    def test_nothing_to_group(self):
+        self.assertEqual(fab.programs_group("grq", "; no programs\n"), "")
+
+    def test_add_group_appends_to_the_rendered_file(self):
+        with umock.patch.object(fab, "run") as run:
+            run.side_effect = lambda cmd, **kw: "[program:a]\n[program:b]\n" if cmd.startswith("cat ") else None
+            fab.add_supervisord_group("factotum", "verdi")
+        appended = run.call_args_list[-1].args[0]
+        self.assertIn(">> ~/verdi/etc/programs.conf", appended)
+        self.assertIn("[group:factotum]\nprograms=a,b\n", appended)
+
+
 class TestPaths(SingleMachineCase):
 
     def test_code_dir(self):
         for comp_dir in ("mozart", "sciflo", "metrics", "verdi"):
             self.assertEqual(fab.code_dir(comp_dir), "mozart")
         self.assertEqual(fab.code_dir("verdi-worker"), "verdi-worker")
+
+    def test_resolve_role_still_returns_the_components_own_folder(self):
+        # projects use it for etc/bin/log paths
+        for role, comp_dir in (("grq", "sciflo"), ("factotum", "verdi"), ("metrics", "metrics"), ("mozart", "mozart")):
+            with umock.patch.dict(fab.env, {"effective_roles": [role], "host_string": "h"}), \
+                    umock.patch.dict(fab.env.roledefs, {role: ["h"]}):
+                self.assertEqual(fab.resolve_role()[1], comp_dir)
 
     def test_code_dir_default(self):
         with umock.patch.object(fab, "single_machine", False):
@@ -202,6 +230,21 @@ class TestSupervisord(SingleMachineCase):
         self.prefix.assert_called_with("source sciflo/bin/activate")
 
 
+class TestSendCeleryconf(SingleMachineCase):
+
+    def test_factotum_gets_its_own_celeryconfig_with_real_ips(self):
+        with umock.patch.object(fab, "upload_template") as upload, \
+                umock.patch.object(fab, "get_context", return_value={}) as get_context:
+            fab.send_celeryconf("factotum")
+        get_context.assert_any_call("verdi")  # real IPs, not mozart's loopback ones
+        self.assertEqual(upload.call_args.args[1], "~/verdi/etc/celeryconfig.py")
+
+    def test_factotum_node_type_needs_a_single_machine(self):
+        with umock.patch.object(fab, "single_machine", False), umock.patch.object(fab, "get_context"):
+            with self.assertRaises(RuntimeError):
+                fab.send_celeryconf("factotum")
+
+
 class TestKillHung(SingleMachineCase):
 
     def setUp(self):
@@ -276,6 +319,17 @@ class TestAll(SingleMachineCase):
             status.status_comp("all", None)
         shown = [c.args[3] for c in print_status.call_args_list if c.args[1] in ("grq", "mozart", "metrics", "factotum")]
         self.assertEqual(shown, [True, False, False, False])
+
+    def test_reset_all_clears_everything_between_one_stop_and_one_start(self):
+        with umock.patch.object(reset, "execute") as execute, umock.patch.object(reset, "reset_grq") as reset_grq:
+            reset.reset_comp("all", None)
+        reset_grq.assert_not_called()
+        fns = [c.args[0] for c in execute.call_args_list]
+        self.assertEqual(fns.count(fab.supervisord_stop), 1)
+        self.assertEqual(fns[-1], fab.supervisord_clean_start)
+        for clear in (fab.kill_hung, fab.rabbitmq_queues_flush, fab.mozart_redis_flush, fab.mozart_es_flush, fab.redis_flush):
+            self.assertLess(fns.index(fab.supervisord_stop), fns.index(clear))
+            self.assertLess(fns.index(clear), fns.index(fab.supervisord_clean_start))
 
     def test_default_start_all_starts_each_component(self):
         with umock.patch.object(fab, "single_machine", False), \

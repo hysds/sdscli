@@ -43,6 +43,8 @@ def send_supervisord_conf(comp, tmpl, config_dir):
     execute(fab.send_template_user_override, tmpl,
             f'~/{config_dir}/etc/{dest}', '~/mozart/ops/hysds/configs/supervisor',
             roles=[comp])
+    if fab.single_machine:
+        execute(fab.add_supervisord_group, comp, config_dir, roles=[comp])
 
 
 def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
@@ -590,6 +592,9 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
         bar.update()
 
         # update
+        if not config_only and fab.single_machine:
+            # factotum runs mozart's code, including spyddder-man
+            execute(fab.set_spyddder_settings, 'mozart', roles=[comp])
         if not config_only and not fab.single_machine:
             set_bar_desc(bar, 'Syncing packages')
             execute(fab.rm_rf, '~/verdi/ops/*', roles=[comp])
@@ -618,13 +623,18 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
                     '~/verdi/ops/chimera', ndeps, roles=[comp])
             bar.update()
 
-        # update celery config (a single machine uses mozart's)
-        if not fab.single_machine:
-            set_bar_desc(bar, 'Updating celery config')
+        # update celery config
+        set_bar_desc(bar, 'Updating celery config')
+        if fab.single_machine:
+            # factotum runs mozart's code and celeryconfig (loopback IPs), but the celeryconfig mapped into
+            # job containers must use real IPs: ~/verdi/etc/celeryconfig.py, via HYSDS_CELERY_CFG
+            execute(fab.rm_rf, '~/verdi/etc/celeryconfig.py', roles=[comp])
+            execute(fab.send_celeryconf, 'factotum', roles=[comp])
+        else:
             execute(fab.rm_rf, '~/verdi/ops/hysds/celeryconfig.py', roles=[comp])
             execute(fab.rm_rf, '~/verdi/ops/hysds/celeryconfig.pyc', roles=[comp])
             execute(fab.send_celeryconf, 'verdi', roles=[comp])
-            bar.update()
+        bar.update()
 
         # update supervisor config
         set_bar_desc(bar, 'Updating supervisor config')

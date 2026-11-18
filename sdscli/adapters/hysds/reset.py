@@ -154,8 +154,32 @@ def reset_factotum(conf, comp='factotum'):
 def reset_comp(comp, conf):
     """Start component."""
 
+    # a single machine has one process manager running every component: stop it, clear every component's
+    # state, then start it once, so no component's programs run against queues that haven't been cleared yet
+    if comp == 'all' and fab.single_machine:
+        with tqdm(total=5) as bar:
+            set_bar_desc(bar, 'Ensuring HySDS venv')
+            execute(fab.ensure_venv, 'mozart', roles=['mozart'])
+            bar.update()
+            set_bar_desc(bar, 'Stopping supervisord')
+            execute(fab.supervisord_stop, roles=['mozart'])
+            execute(fab.kill_hung, roles=['factotum'])
+            bar.update()
+            set_bar_desc(bar, 'Clearing mozart rabbitMQ queues, redis and ES')
+            execute(fab.rabbitmq_queues_flush, roles=['mozart'])
+            execute(fab.mozart_redis_flush, roles=['mozart'])
+            execute(fab.mozart_es_flush, roles=['mozart'])
+            bar.update()
+            set_bar_desc(bar, 'Clearing metrics redis')
+            execute(fab.redis_flush, roles=['metrics'])
+            bar.update()
+            set_bar_desc(bar, 'Starting supervisord')
+            execute(fab.supervisord_clean_start, roles=['mozart'])
+            bar.update()
+            set_bar_desc(bar, "Reset all")
+            print("")
     # if all, create progress bar
-    if comp == 'all':
+    elif comp == 'all':
 
         # progress bar
         with tqdm(total=4) as bar:

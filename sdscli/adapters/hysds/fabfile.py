@@ -209,8 +209,6 @@ def resolve_role():
         hysds_dir = "sciflo"
     else:
         hysds_dir = role
-    if role in COMP_DIRS:
-        hysds_dir = code_dir(hysds_dir)  # venv/code dir; mozart's on a single machine
     return role, hysds_dir, hostname
 
 
@@ -477,6 +475,7 @@ def systemctl(cmd, service):
 
 def status():
     role, hysds_dir, hostname = resolve_role()
+    hysds_dir = code_dir(hysds_dir)  # the one supervisord runs from mozart's venv on a single machine
     if exists('%s/run/supervisor.sock' % hysds_dir):
         with prefix('source %s/bin/activate' % hysds_dir):
             run('supervisorctl status')
@@ -537,6 +536,7 @@ def install_pkg_es_templates():
     role, hysds_dir, hostname = resolve_role()
     if role not in ('grq', 'mozart'):
         raise RuntimeError("Invalid fabric function for %s." % role)
+    hysds_dir = code_dir(hysds_dir)
     with prefix('source %s/bin/activate' % hysds_dir):
         run('%s/ops/mozart/scripts/install_es_template.sh' % (hysds_dir))
 
@@ -551,6 +551,7 @@ def install_base_es_template():
     dir = role
     if role == "grq":
         dir = "grq2"
+    hysds_dir = code_dir(hysds_dir)
     with prefix('source %s/bin/activate' % hysds_dir):
         run(f'{hysds_dir}/ops/{dir}/scripts/install_base_es_template.sh /tmp/es_template-base.json')
 
@@ -640,6 +641,26 @@ def check_supervisord_programs():
         abort("Can't start supervisord on %s:\n  %s" % (env.host_string, "\n  ".join(problems)))
 
 
+def programs_group(comp, text):
+    """Return the [group:<comp>] block listing every program in a rendered programs.conf ('' if it has one).
+
+    Grouping lets `sds start|stop <comp>` act on <comp>:* without each template (or project override)
+    keeping a list of its programs in sync.
+    """
+    if re.search(r'^\[group:', text, re.M):
+        return ''
+    names = PROGRAM_RE.findall(text)
+    return '\n[group:%s]\nprograms=%s\n' % (comp, ','.join(names)) if names else ''
+
+
+def add_supervisord_group(comp, comp_dir):
+    """Single machine: append the component's program group to its rendered programs.conf."""
+    path = '~/%s/etc/programs.conf' % comp_dir
+    block = programs_group(comp, run('cat %s' % path, quiet=True))
+    if block:
+        run("cat >> %s <<'EOF'\n%sEOF" % (path, block))
+
+
 def supervisord_start(group=None):
     """Single machine: start the one supervisord, or bring up a single component's programs under it.
 
@@ -659,6 +680,14 @@ def supervisord_start(group=None):
             run('supervisorctl reread')
             run('supervisorctl update')
             run('supervisorctl start %s' % ('all' if group is None else group + ':*'), warn_only=True)
+
+
+def supervisord_clean_start():
+    """Single machine: clear grq, metrics and factotum logs and factotum's work dirs (what their resets clear),
+    then start everything under the one supervisord."""
+    run('rm -rf %s/sciflo/log/* %s/metrics/log/* %s/verdi/log/*' % (ops_dir, ops_dir, ops_dir))
+    run('rm -rf /data/work/scifloWork-ops/* /data/work/jobs/* /data/work/cache/*')
+    supervisord_start()
 
 
 def supervisord_stop(group=None):
@@ -1132,6 +1161,8 @@ def send_celeryconf(node_type):
         base_dir = worker_staging_dir
     elif node_type == 'grq':
         base_dir = "sciflo"
+    elif node_type == 'factotum' and single_machine:
+        ctx = get_context('verdi')
     else:
         raise RuntimeError("Unknown node type: %s" % node_type)
     tmpl = 'celeryconfig.py.tmpl'
@@ -1140,7 +1171,10 @@ def send_celeryconf(node_type):
         tmpl_asg = 'celeryconfig.py.tmpl.asg'
         if os.path.exists(os.path.join(user_path, tmpl_asg)):
             tmpl = tmpl_asg
-    dest_file = '~/%s/ops/hysds/celeryconfig.py' % base_dir
+    if node_type == 'factotum':
+        dest_file = '~/verdi/etc/celeryconfig.py'
+    else:
+        dest_file = '~/%s/ops/hysds/celeryconfig.py' % base_dir
     upload_template(tmpl, dest_file, use_jinja=True, context=ctx,
                     template_dir=resolve_files_dir(tmpl, template_dir))
 
