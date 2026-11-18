@@ -174,14 +174,15 @@ def print_tps_status(conf, comp, debug=False):
         print_service_status('jenkins', ret, debug)
 
 
-def print_status(conf, comp, debug=False):
+def print_status(conf, comp, debug=False, programs=True):
     """"Status of component."""
 
     print_component_header(comp)
     if len(fab.env.roledefs[comp]) == 1 and "None" not in fab.env.roledefs[comp]:
         print_tps_status(conf, comp, debug)
-        print_supervisor_header(comp)
-        execute(fab.status, roles=[comp])
+        if programs:
+            print_supervisor_header(comp)
+            execute(fab.status, roles=[comp])
     else:
         print(f"No configured host(s) for role: {comp}. Skipping.")
 
@@ -189,14 +190,12 @@ def print_status(conf, comp, debug=False):
 def status_comp(comp, conf, debug=False):
     """Update component."""
 
-    if comp in ('all', 'grq'):
-        print_status(conf, 'grq', debug)
-    if comp in ('all', 'mozart'):
-        print_status(conf, 'mozart', debug)
-    if comp in ('all', 'metrics'):
-        print_status(conf, 'metrics', debug)
-    if comp in ('all', 'factotum'):
-        print_status(conf, 'factotum', debug)
+    # a single machine has one process manager listing every component's programs; show it once
+    programs = True
+    for name in ('grq', 'mozart', 'metrics', 'factotum'):
+        if comp in ('all', name):
+            print_status(conf, name, debug, programs)
+            programs = not fab.single_machine
     if comp in ('all', 'ci'):
         print_status(conf, 'ci', debug)
     if comp in ('all', 'verdi'):

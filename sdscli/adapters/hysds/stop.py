@@ -109,8 +109,16 @@ def stop_factotum(conf, comp='factotum'):
 def stop_comp(comp, conf):
     """Stop component."""
 
+    # a single machine has one process manager running every component
+    if comp == 'all' and fab.single_machine:
+        with tqdm(total=1) as bar:
+            set_bar_desc(bar, 'Stopping supervisord')
+            execute(fab.supervisord_stop, roles=['mozart'])
+            bar.update()
+            set_bar_desc(bar, "Stopped all")
+            print("")
     # if all, create progress bar
-    if comp == 'all':
+    elif comp == 'all':
 
         # progress bar
         with tqdm(total=4) as bar:

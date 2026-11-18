@@ -27,6 +27,24 @@ prompt_style = style_from_dict({
 })
 
 
+def send_supervisord_conf(comp, tmpl, config_dir):
+    """Write a component's supervisord config.
+
+    On a single machine (HC-672) every component's programs go to ~/<config_dir>/etc/programs.conf, which
+    mozart's one supervisord.conf includes; otherwise it is the component's own supervisord.conf.
+    """
+    dest = 'programs.conf' if fab.single_machine else 'supervisord.conf'
+    if fab.single_machine and comp == 'mozart':
+        execute(fab.rm_rf, '~/mozart/etc/supervisord.conf', roles=[comp])
+        execute(fab.send_template_user_override, 'supervisord.conf.single_machine',
+                '~/mozart/etc/supervisord.conf', '~/mozart/ops/hysds/configs/supervisor',
+                roles=[comp])
+    execute(fab.rm_rf, f'~/{config_dir}/etc/{dest}', roles=[comp])
+    execute(fab.send_template_user_override, tmpl,
+            f'~/{config_dir}/etc/{dest}', '~/mozart/ops/hysds/configs/supervisor',
+            roles=[comp])
+
+
 def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
     """"Update mozart component."""
 
@@ -92,10 +110,7 @@ def update_mozart(conf, ndeps=False, config_only=False, comp='mozart'):
 
         # update supervisor config
         set_bar_desc(bar, 'Updating supervisor config')
-        execute(fab.rm_rf, '~/mozart/etc/supervisord.conf', roles=[comp])
-        execute(fab.send_template_user_override, 'supervisord.conf.mozart',
-                '~/mozart/etc/supervisord.conf', '~/mozart/ops/hysds/configs/supervisor',
-                roles=[comp])
+        send_supervisord_conf(comp, 'supervisord.conf.mozart', 'mozart')
         bar.update()
 
         # update orchestrator config
@@ -317,7 +332,7 @@ def update_metrics(conf, ndeps=False, config_only=False, comp='metrics'):
         bar.update()
 
         # update
-        if not config_only:
+        if not config_only and not fab.single_machine:
             set_bar_desc(bar, 'Syncing packages')
             execute(fab.rm_rf, '~/metrics/ops/*', roles=[comp])
             execute(fab.rsync_code, 'metrics', roles=[comp])
@@ -349,23 +364,21 @@ def update_metrics(conf, ndeps=False, config_only=False, comp='metrics'):
         execute(fab.send_logstash_jvm_options, 'metrics', roles=[comp])
         bar.update()
 
-        # update celery config
-        set_bar_desc(bar, 'Updating celery config')
-        execute(fab.rm_rf, '~/metrics/ops/hysds/celeryconfig.py', roles=[comp])
-        bar.update()
-        execute(fab.rm_rf, '~/metrics/ops/hysds/celeryconfig.pyc',
-                roles=[comp])
-        bar.update()
-        execute(fab.send_celeryconf, 'metrics', roles=[comp])
-        bar.update()
+        # update celery config (a single machine uses mozart's)
+        if not fab.single_machine:
+            set_bar_desc(bar, 'Updating celery config')
+            execute(fab.rm_rf, '~/metrics/ops/hysds/celeryconfig.py', roles=[comp])
+            bar.update()
+            execute(fab.rm_rf, '~/metrics/ops/hysds/celeryconfig.pyc',
+                    roles=[comp])
+            bar.update()
+            execute(fab.send_celeryconf, 'metrics', roles=[comp])
+            bar.update()
 
         # update supervisor config
         set_bar_desc(bar, 'Updating supervisor config')
-        execute(fab.rm_rf, '~/metrics/etc/supervisord.conf', roles=[comp])
+        send_supervisord_conf(comp, 'supervisord.conf.metrics', 'metrics')
         bar.update()
-        execute(fab.send_template_user_override, 'supervisord.conf.metrics',
-                '~/metrics/etc/supervisord.conf', '~/mozart/ops/hysds/configs/supervisor',
-                roles=[comp])
         bar.update()
 
         # update datasets config; overwrite datasets config with domain-specific config
@@ -412,6 +425,7 @@ def update_grq(conf, ndeps=False, config_only=False, comp='grq'):
     """"Update grq component."""
 
     num_updates = 17 if config_only else 26  # number of progress bar updates
+    code_dir = fab.code_dir('sciflo')  # ~/mozart on a single machine
 
     with tqdm(total=num_updates) as bar:  # progress bar
         # ensure venv
@@ -425,7 +439,7 @@ def update_grq(conf, ndeps=False, config_only=False, comp='grq'):
         bar.update()
 
         # update
-        if not config_only:
+        if not config_only and not fab.single_machine:
             set_bar_desc(bar, 'Syncing packages')
             execute(fab.rm_rf, '~/sciflo/ops/*', roles=[comp])
             execute(fab.rsync_code, 'grq', 'sciflo', roles=[comp])
@@ -460,16 +474,17 @@ def update_grq(conf, ndeps=False, config_only=False, comp='grq'):
                     '~/sciflo/ops/pele', ndeps, roles=[comp])
             bar.update()
 
-        # update celery config
-        set_bar_desc(bar, 'Updating celery config')
-        execute(fab.rm_rf, '~/sciflo/ops/hysds/celeryconfig.py', roles=[comp])
-        execute(fab.rm_rf, '~/sciflo/ops/hysds/celeryconfig.pyc', roles=[comp])
-        execute(fab.send_celeryconf, 'grq', roles=[comp])
-        bar.update()
+        # update celery config (a single machine uses mozart's)
+        if not fab.single_machine:
+            set_bar_desc(bar, 'Updating celery config')
+            execute(fab.rm_rf, '~/sciflo/ops/hysds/celeryconfig.py', roles=[comp])
+            execute(fab.rm_rf, '~/sciflo/ops/hysds/celeryconfig.pyc', roles=[comp])
+            execute(fab.send_celeryconf, 'grq', roles=[comp])
+            bar.update()
 
         # update grq2 config
         set_bar_desc(bar, 'Updating grq2 config')
-        execute(fab.rm_rf, '~/sciflo/ops/grq2/settings.cfg', roles=[comp])
+        execute(fab.rm_rf, f'~/{code_dir}/ops/grq2/settings.cfg', roles=[comp])
         execute(fab.send_grq2conf, roles=[comp])
         bar.update()
 
@@ -480,7 +495,7 @@ def update_grq(conf, ndeps=False, config_only=False, comp='grq'):
 
         # update pele config
         set_bar_desc(bar, 'Updating pele config')
-        execute(fab.rm_rf, '~/sciflo/ops/pele/settings.cfg', roles=[comp])
+        execute(fab.rm_rf, f'~/{code_dir}/ops/pele/settings.cfg', roles=[comp])
         execute(fab.send_peleconf, 'pele_settings.cfg.tmpl', roles=[comp])
         bar.update()
 
@@ -496,10 +511,7 @@ def update_grq(conf, ndeps=False, config_only=False, comp='grq'):
 
         # update supervisor config
         set_bar_desc(bar, 'Updating supervisor config')
-        execute(fab.rm_rf, '~/sciflo/etc/supervisord.conf', roles=[comp])
-        execute(fab.send_template_user_override, 'supervisord.conf.grq',
-                '~/sciflo/etc/supervisord.conf', '~/mozart/ops/hysds/configs/supervisor',
-                roles=[comp])
+        send_supervisord_conf(comp, 'supervisord.conf.grq', 'sciflo')
         bar.update()
 
         # update datasets config; overwrite datasets config with domain-specific config
@@ -528,13 +540,13 @@ def update_grq(conf, ndeps=False, config_only=False, comp='grq'):
 
         # link ssl certs to apps
         execute(fab.ln_sf, '~/ssl/server.key',
-                '~/sciflo/ops/grq2/server.key', roles=[comp])
+                f'~/{code_dir}/ops/grq2/server.key', roles=[comp])
         execute(fab.ln_sf, '~/ssl/server.pem',
-                '~/sciflo/ops/grq2/server.pem', roles=[comp])
+                f'~/{code_dir}/ops/grq2/server.pem', roles=[comp])
         execute(fab.ln_sf, '~/ssl/server.key',
-                '~/sciflo/ops/pele/server.key', roles=[comp])
+                f'~/{code_dir}/ops/pele/server.key', roles=[comp])
         execute(fab.ln_sf, '~/ssl/server.pem',
-                '~/sciflo/ops/pele/server.pem', roles=[comp])
+                f'~/{code_dir}/ops/pele/server.pem', roles=[comp])
         bar.update()
 
         # expose hysds log dir via webdav
@@ -578,7 +590,7 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
         bar.update()
 
         # update
-        if not config_only:
+        if not config_only and not fab.single_machine:
             set_bar_desc(bar, 'Syncing packages')
             execute(fab.rm_rf, '~/verdi/ops/*', roles=[comp])
             execute(fab.rsync_code, 'factotum', 'verdi', roles=[comp])
@@ -606,19 +618,17 @@ def update_factotum(conf, ndeps=False, config_only=False, comp='factotum'):
                     '~/verdi/ops/chimera', ndeps, roles=[comp])
             bar.update()
 
-        # update celery config
-        set_bar_desc(bar, 'Updating celery config')
-        execute(fab.rm_rf, '~/verdi/ops/hysds/celeryconfig.py', roles=[comp])
-        execute(fab.rm_rf, '~/verdi/ops/hysds/celeryconfig.pyc', roles=[comp])
-        execute(fab.send_celeryconf, 'verdi', roles=[comp])
-        bar.update()
+        # update celery config (a single machine uses mozart's)
+        if not fab.single_machine:
+            set_bar_desc(bar, 'Updating celery config')
+            execute(fab.rm_rf, '~/verdi/ops/hysds/celeryconfig.py', roles=[comp])
+            execute(fab.rm_rf, '~/verdi/ops/hysds/celeryconfig.pyc', roles=[comp])
+            execute(fab.send_celeryconf, 'verdi', roles=[comp])
+            bar.update()
 
         # update supervisor config
         set_bar_desc(bar, 'Updating supervisor config')
-        execute(fab.rm_rf, '~/verdi/etc/supervisord.conf', roles=[comp])
-        execute(fab.send_template_user_override, 'supervisord.conf.factotum',
-                '~/verdi/etc/supervisord.conf', '~/mozart/ops/hysds/configs/supervisor',
-                roles=[comp])
+        send_supervisord_conf(comp, 'supervisord.conf.factotum', 'verdi')
         bar.update()
 
         # update datasets config; overwrite datasets config with domain-specific config
@@ -790,12 +800,17 @@ def update_comp(comp, conf, ndeps=False, config_only=False):
     if comp == 'all':  # if all, create progress bar
         # progress bar
         with tqdm(total=5) as bar:
+            if fab.single_machine:  # the other components need mozart's venv and code
+                set_bar_desc(bar, "Updating mozart")
+                update_mozart(conf, ndeps, config_only)
+                bar.update()
             set_bar_desc(bar, "Updating grq")
             update_grq(conf, ndeps, config_only)
             bar.update()
-            set_bar_desc(bar, "Updating mozart")
-            update_mozart(conf, ndeps, config_only)
-            bar.update()
+            if not fab.single_machine:
+                set_bar_desc(bar, "Updating mozart")
+                update_mozart(conf, ndeps, config_only)
+                bar.update()
             set_bar_desc(bar, "Updating metrics")
             update_metrics(conf, ndeps, config_only)
             bar.update()

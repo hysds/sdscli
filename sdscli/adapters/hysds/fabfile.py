@@ -7,7 +7,7 @@ from sdscli.conf_utils import get_user_config_path, get_user_files_path
 from sdscli.log_utils import logger
 from fabric.contrib.project import rsync_project
 from fabric.contrib.files import upload_template, exists, append
-from fabric.api import run, cd, put, sudo, prefix, env, settings, hide
+from fabric.api import run, cd, put, sudo, prefix, env, settings, hide, abort
 from copy import deepcopy
 import requests
 from requests.adapters import HTTPAdapter
@@ -118,10 +118,31 @@ env.timeout = 60
 # define ops home directory
 ops_dir = context['OPS_HOME']
 
+# HC-672: a single machine deployment runs every component from mozart's virtualenv and code (~/mozart)
+# under one supervisord. Each component keeps its own etc/log/run/bin folder for config and logs.
+
+
+def is_single_machine(ctx):
+    return str(ctx.get('SINGLE_MACHINE_CLUSTER') or '').strip().lower() == 'true'
+
+
+single_machine = is_single_machine(context)
+context['SINGLE_MACHINE_CLUSTER'] = single_machine  # templates test a real boolean, not the string 'false'
+
 # directory, relative to OPS_HOME, where mozart stages the code/config bundle shipped to
 # autoscaling verdi workers; override when another component (e.g. factotum on a single
-# machine deployment) already uses ~/verdi
-worker_staging_dir = context.get('WORKER_STAGING_DIR') or 'verdi'
+# machine deployment) already uses ~/verdi. Defaults to verdi-worker on a single machine.
+worker_staging_dir = context.get('WORKER_STAGING_DIR') or ('verdi-worker' if single_machine else 'verdi')
+
+# component role -> the folder (under OPS_HOME) holding its config and logs
+COMP_DIRS = {'mozart': 'mozart', 'grq': 'sciflo', 'metrics': 'metrics', 'factotum': 'verdi'}
+
+
+def code_dir(comp_dir):
+    """Folder holding the virtualenv and ops/ code for a component folder (~/mozart for all on a single machine)."""
+    if single_machine and comp_dir in COMP_DIRS.values():
+        return 'mozart'
+    return comp_dir
 
 
 ##########################
@@ -188,6 +209,8 @@ def resolve_role():
         hysds_dir = "sciflo"
     else:
         hysds_dir = role
+    if role in COMP_DIRS:
+        hysds_dir = code_dir(hysds_dir)  # venv/code dir; mozart's on a single machine
     return role, hysds_dir, hostname
 
 
@@ -461,7 +484,19 @@ def status():
         print(blink(highlight("Supervisord is not running on %s." % role, 'red')))
 
 
+def ensure_comp_dirs(comp_dir):
+    """Single machine: a component other than mozart only keeps its etc/log/run/bin folders."""
+    if not exists("~/mozart/bin/activate"):
+        abort("SINGLE_MACHINE_CLUSTER is true but ~/mozart isn't installed on %s. "
+              "Install it first (install.sh mozart) and run 'sds update mozart'." % env.host_string)
+    for sub_dir in ('etc', 'log', 'run', 'bin'):
+        mkdir('%s/%s' % (comp_dir, sub_dir), context['OPS_USER'], context['OPS_USER'])
+
+
 def ensure_venv(hysds_dir, update_bash_profile=True, system_site_packages=True, install_supervisor=True):
+    if single_machine and hysds_dir in COMP_DIRS.values() and hysds_dir != 'mozart':
+        ensure_comp_dirs(hysds_dir)
+        return
     act_file = "~/%s/bin/activate" % hysds_dir
     if system_site_packages:
         venv_cmd = "virtualenv --system-site-packages %s" % hysds_dir
@@ -567,7 +602,78 @@ def install_mozart_es_templates():
 ##########################
 # grq functions
 ##########################
+SHARED_SECTION_RE = re.compile(
+    r'^\[(unix_http_server|inet_http_server|supervisord|rpcinterface:[^\]]+|supervisorctl)\]', re.M)
+PROGRAM_RE = re.compile(r'^\[program:([^\]]+)\]', re.M)
+
+
+def find_supervisord_conflicts(confs):
+    """Return problems that would make supervisor silently drop programs when the component configs are included.
+
+    :param confs: dict of config folder -> rendered programs.conf text
+    """
+    problems = []
+    owners = {}
+    for comp_dir, text in sorted(confs.items()):
+        for section in sorted(set(m.group(0) for m in SHARED_SECTION_RE.finditer(text))):
+            problems.append("~/%s/etc/programs.conf has the shared section %s; only the main "
+                            "supervisord.conf may have it (override of the supervisord template?)" % (comp_dir, section))
+        for name in PROGRAM_RE.findall(text):
+            owners.setdefault(name, []).append(comp_dir)
+    for name, dirs in sorted(owners.items()):
+        if len(dirs) > 1:
+            problems.append("program [%s] is defined in more than one component (%s); supervisor would keep "
+                            "only the last. Give each program a unique name." %
+                            (name, ", ".join("~/%s" % d for d in dirs)))
+    return problems
+
+
+def check_supervisord_programs():
+    """Single machine: stop if the components' programs.conf files can't be included together."""
+    confs = {}
+    for comp_dir in COMP_DIRS.values():
+        path = '~/%s/etc/programs.conf' % comp_dir
+        if exists(path):
+            confs[comp_dir] = run('cat %s' % path, quiet=True)
+    problems = find_supervisord_conflicts(confs)
+    if problems:
+        abort("Can't start supervisord on %s:\n  %s" % (env.host_string, "\n  ".join(problems)))
+
+
+def supervisord_start(group=None):
+    """Single machine: start the one supervisord, or bring up a single component's programs under it.
+
+    With no group, everything is started.
+    """
+    mkdir('mozart/run', context['OPS_USER'], context['OPS_USER'])
+    check_supervisord_programs()
+    with prefix('source mozart/bin/activate'):
+        if not exists('mozart/run/supervisord.pid'):
+            run('supervisord', pty=False)
+            if group is not None:
+                # supervisord autostarts every included program; leave the other components alone
+                for other in COMP_DIRS:
+                    if other != group:
+                        run('supervisorctl stop %s:*' % other, warn_only=True)
+        else:
+            run('supervisorctl reread')
+            run('supervisorctl update')
+            run('supervisorctl start %s' % ('all' if group is None else group + ':*'), warn_only=True)
+
+
+def supervisord_stop(group=None):
+    """Single machine: stop a component's programs, or shut down the one supervisord when no group is given."""
+    if exists('mozart/run/supervisor.sock'):
+        with prefix('source mozart/bin/activate'):
+            if group is None:
+                run('supervisorctl shutdown')
+            else:
+                run('supervisorctl stop %s:*' % group, warn_only=True)
+
+
 def grqd_start(force=False):
+    if single_machine:
+        return supervisord_start('grq')
     mkdir('sciflo/run', context['OPS_USER'], context['OPS_USER'])
     if not exists('sciflo/run/supervisord.pid') or force:
         with prefix('source sciflo/bin/activate'):
@@ -576,6 +682,8 @@ def grqd_start(force=False):
 
 def grqd_clean_start():
     run('rm -rf %s/sciflo/log/*' % ops_dir)
+    if single_machine:
+        return supervisord_start('grq')
     # with prefix('source %s/sciflo/bin/activate' % ops_dir):
     #    with cd(os.path.join(ops_dir, 'sciflo/ops/grq2/scripts')):
     #        run('./reset_dumby_indices.sh')
@@ -583,35 +691,41 @@ def grqd_clean_start():
 
 
 def grqd_stop():
+    if single_machine:
+        return supervisord_stop('grq')
     if exists('sciflo/run/supervisor.sock'):
         with prefix('source sciflo/bin/activate'):
             run('supervisorctl shutdown')
 
 
 def install_es_template():
-    with prefix('source sciflo/bin/activate'):
-        run('sciflo/ops/grq2/scripts/install_es_template.sh')
+    grq_dir = code_dir('sciflo')
+    with prefix('source %s/bin/activate' % grq_dir):
+        run('%s/ops/grq2/scripts/install_es_template.sh' % grq_dir)
 
 
 def clean_hysds_ios():
-    with prefix('source sciflo/bin/activate'):
-        run('sciflo/ops/grq2/scripts/clean_hysds_ios_indexes.sh https://localhost:9200')
+    grq_dir = code_dir('sciflo')
+    with prefix('source %s/bin/activate' % grq_dir):
+        run('%s/ops/grq2/scripts/clean_hysds_ios_indexes.sh https://localhost:9200' % grq_dir)
 
 
 def create_grq_user_rules_index():
-    with prefix('source ~/sciflo/bin/activate'):
-        with cd('~/sciflo/ops/grq2/scripts'):
+    grq_dir = code_dir('sciflo')
+    with prefix('source ~/%s/bin/activate' % grq_dir):
+        with cd('~/%s/ops/grq2/scripts' % grq_dir):
             run('./create_user_rules_index.py')
 
 
 def create_hysds_ios_grq_index():
-    with prefix('source ~/sciflo/bin/activate'):
-        with cd('~/sciflo/ops/grq2/scripts'):
+    grq_dir = code_dir('sciflo')
+    with prefix('source ~/%s/bin/activate' % grq_dir):
+        with cd('~/%s/ops/grq2/scripts' % grq_dir):
             run('./create_hysds_ios_index.py')
 
 
 def install_ingest_pipeline():
-    with cd('~/sciflo/ops/grq2/scripts'):
+    with cd('~/%s/ops/grq2/scripts' % code_dir('sciflo')):
         run('python install_ingest_pipeline.py')
 
 
@@ -619,6 +733,8 @@ def install_ingest_pipeline():
 # mozart functions
 ##########################
 def mozartd_start(force=False):
+    if single_machine:
+        return supervisord_start('mozart')
     if not exists('mozart/run/supervisord.pid') or force:
         with prefix('source mozart/bin/activate'):
             run('supervisord', pty=False)
@@ -626,10 +742,14 @@ def mozartd_start(force=False):
 
 def mozartd_clean_start():
     run('rm -rf %s/mozart/log/*' % ops_dir)
+    if single_machine:
+        return supervisord_start('mozart')
     mozartd_start(True)
 
 
 def mozartd_stop():
+    if single_machine:
+        return supervisord_stop('mozart')
     if exists('mozart/run/supervisor.sock'):
         with prefix('source mozart/bin/activate'):
             run('supervisorctl shutdown')
@@ -696,6 +816,8 @@ def npm_install_package_json(dest):
 # metrics functions
 ##########################
 def metricsd_start(force=False):
+    if single_machine:
+        return supervisord_start('metrics')
     if not exists('metrics/run/supervisord.pid') or force:
         with prefix('source metrics/bin/activate'):
             run('supervisord', pty=False)
@@ -703,10 +825,14 @@ def metricsd_start(force=False):
 
 def metricsd_clean_start():
     run('rm -rf /home/ops/metrics/log/*')
+    if single_machine:
+        return supervisord_start('metrics')
     metricsd_start(True)
 
 
 def metricsd_stop():
+    if single_machine:
+        return supervisord_stop('metrics')
     if exists('metrics/run/supervisor.sock'):
         with prefix('source metrics/bin/activate'):
             run('supervisorctl shutdown')
@@ -717,10 +843,17 @@ def metricsd_stop():
 ##########################
 
 def kill_hung():
-    # skip processes run from another component's install dir: when components share a host
-    # (single machine deployment), e.g. mozart's sync_ec2_target_tracking_metric-<queue>-job_worker-*
-    # monitors also match "job_worker"
-    skip_other_comps = 'grep -v -e "$HOME/mozart/" -e "$HOME/sciflo/" -e "$HOME/metrics/"'
+    if single_machine:
+        # factotum shares the host (and ~/mozart) with the other components. Mozart's
+        # sync_ec2_target_tracking_metric-<queue>-job_worker-* monitors also match "job_worker", and
+        # their paths can't be told apart from factotum's, so leave those out by name.
+        skip_other_comps = 'grep -v -e sync_ec2_target_tracking_metric'
+        skip_sfl = 'cat'
+    else:
+        # skip processes run from another component's install dir: when components share a host
+        # (e.g. a pre-HC-672 single machine deployment) mozart's monitors also match "job_worker"
+        skip_other_comps = 'grep -v -e "$HOME/mozart/" -e "$HOME/sciflo/" -e "$HOME/metrics/"'
+        skip_sfl = skip_other_comps
     try:
         run(
             'ps x | grep [j]ob_worker | %s | awk \'{print $1}\' | xargs kill -TERM' % skip_other_comps, quiet=True)
@@ -728,12 +861,12 @@ def kill_hung():
         pass
     try:
         run(
-            'ps x | grep [s]flExec | %s | awk \'{print $1}\' | xargs kill -TERM' % skip_other_comps, quiet=True)
+            'ps x | grep [s]flExec | %s | awk \'{print $1}\' | xargs kill -TERM' % skip_sfl, quiet=True)
     except:
         pass
     try:
         run(
-            'ps x | grep [s]flExec | %s | awk \'{print $1}\' | xargs kill -KILL' % skip_other_comps, quiet=True)
+            'ps x | grep [s]flExec | %s | awk \'{print $1}\' | xargs kill -KILL' % skip_sfl, quiet=True)
     except:
         pass
     ps_x()
@@ -745,6 +878,8 @@ def import_kibana(path):
 
 
 def verdid_start(force=False):
+    if single_machine:
+        return supervisord_start('factotum')
     if not exists('verdi/run/supervisord.pid') or force:
         with prefix('source verdi/bin/activate'):
             run('supervisord', pty=False)
@@ -752,10 +887,14 @@ def verdid_start(force=False):
 
 def verdid_clean_start():
     run('rm -rf /data/work/scifloWork-ops/* /data/work/jobs/* /data/work/cache/* %s/verdi/log/*' % ops_dir)
+    if single_machine:
+        return supervisord_start('factotum')
     verdid_start(True)
 
 
 def verdid_stop():
+    if single_machine:
+        return supervisord_stop('factotum')
     if exists('verdi/run/supervisor.sock'):
         with prefix('source verdi/bin/activate'):
             run('supervisorctl shutdown')
@@ -1050,18 +1189,19 @@ def send_hysds_ui_conf():
 
 
 def send_grq2conf():
-    dest_file = '~/sciflo/ops/grq2/settings.cfg'
+    dest_file = '~/%s/ops/grq2/settings.cfg' % code_dir('sciflo')
     upload_template('settings.cfg.tmpl', dest_file, use_jinja=True, context=get_context('grq'),
                     template_dir=os.path.join(ops_dir, 'mozart/ops/grq2/config'))
 
 
 def send_peleconf(send_file='settings.cfg.tmpl', template_dir=get_user_files_path()):
     tmpl_dir = os.path.expanduser(template_dir)
-    dest_file = '~/sciflo/ops/pele/settings.cfg'
+    pele_dir = code_dir('sciflo')
+    dest_file = '~/%s/ops/pele/settings.cfg' % pele_dir
     upload_template(send_file, dest_file, use_jinja=True, context=get_context('grq'),
                     template_dir=tmpl_dir)
-    with prefix('source ~/sciflo/bin/activate'):
-        with cd('~/sciflo/ops/pele'):
+    with prefix('source ~/%s/bin/activate' % pele_dir):
+        with cd('~/%s/ops/pele' % pele_dir):
             run('flask create-db')
             run('flask db init', warn_only=True)
             run('flask db migrate', warn_only=True)

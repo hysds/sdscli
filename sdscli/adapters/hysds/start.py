@@ -105,8 +105,19 @@ def start_factotum(conf, comp='factotum'):
 def start_comp(comp, conf):
     """Start component."""
 
+    # a single machine has one process manager running every component
+    if comp == 'all' and fab.single_machine:
+        with tqdm(total=2) as bar:
+            set_bar_desc(bar, 'Ensuring HySDS venv')
+            execute(fab.ensure_venv, 'mozart', roles=['mozart'])
+            bar.update()
+            set_bar_desc(bar, 'Starting supervisord')
+            execute(fab.supervisord_start, roles=['mozart'])
+            bar.update()
+            set_bar_desc(bar, "Started all")
+            print("")
     # if all, create progress bar
-    if comp == 'all':
+    elif comp == 'all':
 
         # progress bar
         with tqdm(total=4) as bar:
