@@ -58,6 +58,9 @@
         "failed_step": {
           "type": "keyword"
         },
+        "resumed_from": {
+          "type": "keyword"
+        },
         "username": {
           "type": "keyword"
         },
